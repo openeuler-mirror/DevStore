@@ -1,0 +1,4 @@
+[mcp]
+name=mcp
+baseurl=https://eulermaker.compass-ci.openeuler.openatom.cn/api/ems4/repositories/mcps-repo/openEuler%3A24.03-LTS-SP2/$basearch/
+enabled=1
