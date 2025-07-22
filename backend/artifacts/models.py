@@ -13,10 +13,12 @@
 # ======================================================================================================================
 
 from django.db import models
-from django.db.models import UniqueConstraint
+from django.db.models import UniqueConstraint, JSONField
+
+from tasks.models import Task
 
 
-class Plugin(models.Model):
+class OEDPPlugin(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
@@ -30,47 +32,22 @@ class Plugin(models.Model):
     def __str__(self):
         return self.name
 
-    name = models.CharField(
-        "插件名称",
-        max_length=1024,
-        help_text="允许插件名称中带有版本号，表示软件本身的版本，而非插件的版本。"
-    )
-    version = models.CharField(
-        "插件版本",
-        max_length=256,
-        help_text="注意该版本为插件版本，非部署软件版本"
-    )
-    updated_at = models.DateTimeField("插件更新时间")
-    description = models.CharField("插件描述", max_length=2048)
-    type = models.CharField(
-        "插件类型",
-        max_length=16,
-        choices=Type.choices,
-        default=Type.APP,
-        help_text="保留字段，暂不生效"
-    )
-    sha256sum = models.CharField(
-        "插件校验码",
-        max_length=1024,
-        help_text="插件 sha256sum 校验码"
-    )
-    size = models.PositiveBigIntegerField(
-        "插件大小",
-        help_text="插件大小，单位为 Bytes"
-    )
-    author = models.CharField("插件作者", max_length=256, blank=True, null=True)
-    can_be_deployed_local = models.BooleanField(
-        "是否支持本地单节点部署",
-        default=False,
-        help_text="该插件是否支持单节点部署以及是否支持和 oeDeploy 部署在同一节点"
-    )
-    repo = models.CharField("插件代码仓库链接", max_length=2048, blank=True, null=True)
-    readme = models.CharField("README 文件链接", max_length=2048, blank=True, null=True)
-    icon = models.CharField("插件图标链接", max_length=2048, blank=True, null=True)
-    download_url = models.CharField("插件下载链接", max_length=2048, blank=True, null=True)
+    name = models.CharField("名称", max_length=1024)
+    version = models.CharField("版本", max_length=256)
+    key = models.CharField("数据库索引", max_length=2048)
+    updated_at = models.DateTimeField("更新时间")
+    url = models.CharField("代码仓url", max_length=2048, blank=True, null=True)
+    type = models.CharField("类型", max_length=16, choices=Type.choices, default=Type.APP, help_text="保留字段，暂不生效")
+    author = models.CharField("发布者", max_length=256, blank=True, null=True)
+    description = JSONField("简介", default=dict, help_text="字典格式,key:语言,value:文本")
+    readme = models.TextField("README文本", blank=True, null=True)
+    icon_url = models.CharField("图标url", max_length=2048, default="")
+    icon = models.TextField("图标数据", blank=True, null=True)
+    localhost_available = models.BooleanField("是否支持本地单节点部署", default=False)
+    action_list = JSONField("部署操作列表", default=list, help_text="列表,每个元素包含name,title,description,status")
 
 
-class MCPService(models.Model):
+class MCPServer(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
@@ -81,16 +58,15 @@ class MCPService(models.Model):
     def __str__(self):
         return self.name
 
-    name = models.CharField("MCP 服务名称", max_length=1024)
-    package_name = models.CharField("MCP 服务软件包名称", max_length=1024)
-    version = models.CharField("MCP 服务软件包版本", max_length=256)
-    updated_at = models.DateTimeField('MCP 服务更新时间')
-    author = models.CharField("MCP 服务发布者", max_length=256, blank=True, null=True)
-    description = models.CharField("MCP 服务描述", max_length=2048)
-    size = models.PositiveBigIntegerField(
-        "MCP 服务包大小",
-        help_text="MCP 服务包大小，单位为 Bytes"
-    )
-    repo = models.CharField("MCP 服务代码仓库链接", max_length=2048, blank=True, null=True)
-    readme = models.CharField("MCP 服务 README 文件链接", max_length=2048, blank=True, null=True)
-    icon = models.CharField("MCP 服务图标链接", max_length=2048)
+    name = models.CharField("名称", max_length=1024)
+    package_name = models.CharField("软件包名称", max_length=1024)
+    version = models.CharField("软件包版本", max_length=256)
+    key = models.CharField("数据库索引", max_length=2048)
+    updated_at = models.DateTimeField('更新时间')
+    url = models.CharField("代码仓url", max_length=2048, blank=True, null=True)
+    author = models.CharField("发布者", max_length=256, blank=True, null=True)
+    description = JSONField("简介", default=dict, help_text="字典格式,key:语言,value:文本")
+    readme = models.TextField("README文本", blank=True, null=True)
+    icon_url = models.CharField("图标url", max_length=2048, default="")
+    icon = models.TextField("图标数据", blank=True, null=True)
+    app_list = JSONField("智能体应用列表", default=list, help_text="列表,每个元素包含name,status")

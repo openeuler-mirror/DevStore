@@ -25,12 +25,12 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from artifacts.models import MCPService, Plugin
+from artifacts.models import MCPServer, OEDPPlugin
 from artifacts.serializers import (
     ArtifactSerializer,
-    PluginBulkCreateSerializer,
     MCPBulkCreateSerializer,
     MCPDetailSerializer,
+    PluginBulkCreateSerializer,
     PluginDetailSerializer
 )
 from artifacts.tasks.install_mcp_task import InstallMCPTask
@@ -102,8 +102,11 @@ class ArtifactViewSet(viewsets.GenericViewSet):
                 return [], str(ex)
             for multi_version_plugins in yaml_handler.data.get('plugins'):
                 for plugin_info in list(multi_version_plugins.values())[0]:
+                    plugin_info['key'] = plugin_info['name'] + '_' + plugin_info['version']
                     plugin_info['updated_at'] = plugin_info.pop('updated')
-                    plugin_info['download_url'] = " ".join(plugin_info.pop('urls'))
+                    description = plugin_info.pop('description')
+                    plugin_info['description'] = dict()
+                    plugin_info['description']['default'] = description
                     plugin_data.append(plugin_info)
 
         msg = 'Generate plugin data successfully.'
@@ -170,10 +173,12 @@ class ArtifactViewSet(viewsets.GenericViewSet):
                 mcp_info['package_name'] = package_name
                 mcp_info['name'] = package_name.removeprefix('mcp-servers-')
             version = package.find('common:version', namespace)
-            mcp_info['version'] = f"{version.get('epoch')}:{version.get('ver')}-{version.get('rel')}"
+            mcp_info['version'] = f"{version.get('ver')}-{version.get('rel')}"  # 暂未考虑epoch
             timestamp = package.find('common:time', namespace).get('file')
             mcp_info['updated_at'] = timestamp2local(int(timestamp))
-            mcp_info['description'] = package.find('common:description', namespace).text
+            mcp_info['key'] = mcp_info['name'] + '_' + mcp_info['version']
+            mcp_info['description'] = dict()
+            mcp_info['description']['default'] = package.find('common:description', namespace).text
             mcp_info['size'] = int(package.find('common:size', namespace).get('package'))
             mcp_info['repo'] = package.find('common:url', namespace).text
             mcp_data.append(mcp_info)
@@ -200,9 +205,9 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         logger.info("==== API: [GET] /v1.0/artifacts/ ====")
         tag = request.query_params.get('tag')
         if tag == ArtifactTag.OEDP:
-            queryset = Plugin.objects.all()
+            queryset = OEDPPlugin.objects.all()
         elif tag == ArtifactTag.MCP:
-            queryset = MCPService.objects.all()
+            queryset = MCPServer.objects.all()
         else:
             msg = 'The query parameter [tag] is missing, or the value of the query parameter [tag] is invalid.'
             logger.error(msg)
@@ -212,8 +217,11 @@ class ArtifactViewSet(viewsets.GenericViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
         queryset = self.paginate_queryset(queryset)
         serializer = ArtifactSerializer(queryset, many=True)
-        logger.info("Get list information successfully.")
-        return self.get_paginated_response(serializer.data)
+        msg = "Get list information successfully."
+        logger.info(msg)
+        response = self.get_paginated_response(serializer.data)
+        response.data.update({'is_success': True, 'message': msg})
+        return response
 
     @staticmethod
     def retrieve(request, pk):
@@ -222,9 +230,9 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         tag = request.query_params.get('tag')
         if tag == ArtifactTag.MCP:
             try:
-                mcp_service = MCPService.objects.get(id=pk)
-            except MCPService.DoesNotExist:
-                msg = f"The MCP service with ID {pk} does not exist."
+                mcp_service = MCPServer.objects.get(id=pk)
+            except MCPServer.DoesNotExist:
+                msg = f"The MCP Server with id {pk} does not exist."
                 logger.error(msg)
                 return Response({
                     'is_success': False,
@@ -233,9 +241,51 @@ class ArtifactViewSet(viewsets.GenericViewSet):
             serializer = MCPDetailSerializer(mcp_service)
         elif tag == ArtifactTag.OEDP:
             try:
-                plugin = Plugin.objects.get(id=pk)
-            except Plugin.DoesNotExist:
-                msg = f"The plugin with ID {pk} does not exist."
+                plugin = OEDPPlugin.objects.get(id=pk)
+            except OEDPPlugin.DoesNotExist:
+                msg = f"The plugin with id {pk} does not exist."
+                logger.error(msg)
+                return Response({
+                    'is_success': False,
+                    'message': msg
+                }, status=status.HTTP_400_BAD_REQUEST)
+            serializer = PluginDetailSerializer(plugin)
+        else:
+            msg = 'The query parameter [tag] is missing, or the value of the query parameter [tag] is invalid.'
+            logger.error(msg)
+            return Response({
+                'is_success': False,
+                'message': msg
+            }, status=status.HTTP_400_BAD_REQUEST)
+        msg = 'Get detail successfully.'
+        logger.info(msg)
+        return Response({
+            'is_success': True,
+            'message': msg,
+            'data': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    @action(methods=['GET'], detail=False)
+    def details(self, request):
+        logger.info(f'==== API: [GET] /v1.0/artifacts/details/ ====')
+        key = request.query_params.get('key')
+        tag = request.query_params.get('tag')
+        if tag == ArtifactTag.MCP:
+            try:
+                mcp_service = MCPServer.objects.get(key=key)
+            except MCPServer.DoesNotExist:
+                msg = f"The MCP Server with key {key} does not exist."
+                logger.error(msg)
+                return Response({
+                    'is_success': False,
+                    'message': msg
+                }, status=status.HTTP_400_BAD_REQUEST)
+            serializer = MCPDetailSerializer(mcp_service)
+        elif tag == ArtifactTag.OEDP:
+            try:
+                plugin = OEDPPlugin.objects.get(key=key)
+            except OEDPPlugin.DoesNotExist:
+                msg = f"The plugin with key {key} does not exist."
                 logger.error(msg)
                 return Response({
                     'is_success': False,
@@ -258,8 +308,8 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         }, status=status.HTTP_200_OK)
 
     @action(methods=['GET'], detail=False)
-    def get_task_info(self, request):
-        logger.info(f'==== API: [GET] /v1.0/artifacts/get_task_info/ ====')
+    def task_info(self, request):
+        logger.info(f'==== API: [GET] /v1.0/artifacts/task_info/ ====')
         task_name = request.query_params.get('task_name')
         try:
             task = Task.objects.get(name=task_name)
@@ -287,11 +337,11 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         # TODO 无法安装正在卸载的包
         logger.info(f'==== API: [GET] /v1.0/artifacts/{pk}/install_mcp/ ====')
         # 查询 MCP 服务包信息
-        logger.info("Start query MCP service package information by id.")
+        logger.info("Start query MCP service package information by key.")
         try:
-            mcp_service = MCPService.objects.get(id=pk)
-        except MCPService.DoesNotExist:
-            msg = f"The MCP service with ID {pk} does not exist."
+            mcp_service = MCPServer.objects.get(id=pk)
+        except MCPServer.DoesNotExist:
+            msg = f"The MCP service with key {pk} does not exist."
             logger.error(msg)
             return Response({
                 'is_success': False,
@@ -328,11 +378,11 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         # TODO 无法卸载正在安装的包
         logger.info(f"==== API: [GET] /v1.0/artifacts/{pk}/uninstall_mcp/ ====")
         # 查询 MCP 服务包信息
-        logger.info("Start query MCP service package information by id.")
+        logger.info("Start query MCP service package information by key.")
         try:
-            mcp_service = MCPService.objects.get(id=pk)
-        except MCPService.DoesNotExist:
-            msg = f"The MCP service with ID {pk} does not exist."
+            mcp_service = MCPServer.objects.get(id=pk)
+        except MCPServer.DoesNotExist:
+            msg = f"The MCP service with key {pk} does not exist."
             logger.error(msg)
             return Response({
                 'is_success': False,
@@ -380,11 +430,11 @@ class ArtifactViewSet(viewsets.GenericViewSet):
     def download_plugin(self, request, pk):
         logger.info(f"==== API: [GET] /v1.0/artifacts/{pk}/download_plugin/ ====")
         # 查询插件信息
-        logger.info("Start query plugin package information by id.")
+        logger.info("Start query plugin package information by key.")
         try:
-            plugin = Plugin.objects.get(id=pk)
-        except Plugin.DoesNotExist:
-            msg = f"The plugin with ID {pk} does not exist."
+            plugin = OEDPPlugin.objects.get(id=pk)
+        except OEDPPlugin.DoesNotExist:
+            msg = f"The plugin with key {pk} does not exist."
             logger.error(msg)
             return Response({
                 'is_success': False,
@@ -445,7 +495,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
 
         # 将插件的信息存入数据库中
         serializer = PluginBulkCreateSerializer(data=plugin_data, many=True)
-        self._clear_table(Plugin._meta.db_table)
+        self._clear_table(OEDPPlugin._meta.db_table)
         if not serializer.is_valid():
             logger.error(f"Failed to validate plugin data, errors: {serializer.errors}")
             return Response({
@@ -473,7 +523,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
 
         # 将 MCP 服务的信息存入数据库中
         serializer = MCPBulkCreateSerializer(data=mcp_data, many=True)
-        self._clear_table(MCPService._meta.db_table)
+        self._clear_table(MCPServer._meta.db_table)
         if not serializer.is_valid():
             logger.error(f"Failed to validate MCP data, errors: {serializer.errors}")
             return Response({
@@ -483,22 +533,8 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         mcps = serializer.save()
         logger.info("Store MCP data to database successfully.")
 
-        # 根据 tag 返回 OEDP 插件分页信息或 MCP 服务分页信息
-        tag = request.query_params.get('tag') if request.query_params.get('tag') else ArtifactTag.OEDP
-        if tag == ArtifactTag.OEDP:
-            plugin_ids = [plugin.id for plugin in plugins]
-            queryset = Plugin.objects.filter(id__in=plugin_ids)
-        elif tag == ArtifactTag.MCP:
-            mcp_ids = [mcp.id for mcp in mcps]
-            queryset = MCPService.objects.filter(id__in=mcp_ids)
-        else:
-            msg = f'Invalid value of request parameter "tag", the values: {tag}'
-            logger.error(msg)
-            return Response({
-                'is_success': False,
-                'message': msg
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        plugin_queryset = self.paginate_queryset(queryset)
-        artifact_serializer = ArtifactSerializer(plugin_queryset, many=True)
-        return self.get_paginated_response(artifact_serializer.data)
+        # 仅返回调用结果
+        return Response({
+            'is_success': True,
+            'message': "Sync data successfully."
+        }, status=status.HTTP_200_OK)

@@ -16,8 +16,8 @@ CONFIG_DIR="/etc/dev-store/mariadb"
 INIT_MARIADB_CONFIG_FILE="${CONFIG_DIR}/init_mariadb.conf"
 SERVICES_DIR="/var/lib/dev-store/services"
 
-CURRENT_DIR=$(pwd)
-source ${CURRENT_DIR}/log.sh
+SCRIPT_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}"))
+source ${SCRIPT_DIR}/log.sh
 
 # 读取配置文件
 function read_config_value {

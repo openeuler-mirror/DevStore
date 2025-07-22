@@ -17,7 +17,7 @@ import re
 
 from rest_framework import serializers
 
-from artifacts.models import MCPService, Plugin
+from artifacts.models import MCPServer, OEDPPlugin
 from constants.choices import ArtifactTag
 from constants.paths import PLUGIN_CACHE_DIR
 from tasks.models import Task
@@ -32,36 +32,95 @@ class ArtifactSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField()
     version = serializers.CharField()
-    author = serializers.CharField()
-    description = serializers.CharField()
-    icon = serializers.CharField()
+    key = serializers.CharField()
     updated_at = serializers.DateTimeField()
+    author = serializers.CharField()
+    description = serializers.JSONField()
+    icon = serializers.CharField()
     tag = serializers.SerializerMethodField()
 
     @staticmethod
     def get_tag(obj):
-        if isinstance(obj, MCPService):
+        if isinstance(obj, MCPServer):
             return ArtifactTag.MCP
-        elif isinstance(obj, Plugin):
+        elif isinstance(obj, OEDPPlugin):
             return ArtifactTag.OEDP
         else:
             return ''
 
 
-class MCPDetailSerializer(serializers.ModelSerializer):
+class PluginDetailSerializer(serializers.ModelSerializer):
     tag = serializers.SerializerMethodField()
-    installed_status = serializers.SerializerMethodField()
-    
+    download_status = serializers.SerializerMethodField()
+    cmd_list = serializers.SerializerMethodField()
+
     class Meta:
-        model = MCPService
+        model = OEDPPlugin
         fields = (
             'id',
             'name',
             'version',
+            'key',
+            'tag',
+            'updated_at',
+            'url',
+            'type',
+            'author',
             'description',
             'readme',
+            'icon',
+            'localhost_available',
+            'cmd_list',
+            'download_status',
+            'action_list',
+            
+        )
+
+    @staticmethod
+    def get_tag(obj):
+        return ArtifactTag.OEDP
+
+    @staticmethod
+    def get_download_status(obj):
+        if is_process_running(f'oedp init {obj.name}'):
+            return Task.Status.IN_PROCESS
+        if os.path.exists(os.path.join(PLUGIN_CACHE_DIR, obj.name)):
+            return Task.Status.SUCCESS
+        return Task.Status.NOT_YET
+    
+    @staticmethod
+    def get_cmd_list(obj):
+        cmd_list = [
+            f"oedp init {obj.name} -d ~",
+            f"vim ~/{obj.name}/config.yaml",
+            f"oedp run install -p ~/{obj.name}"
+        ]
+        return cmd_list
+
+
+class MCPDetailSerializer(serializers.ModelSerializer):
+    tag = serializers.SerializerMethodField()
+    installed_status = serializers.SerializerMethodField()
+    cmd_list = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MCPServer
+        fields = (
+            'id',
+            'name',
+            'package_name',
+            'version',
+            'key',
             'tag',
+            'updated_at',
+            'url',
+            'author',
+            'description',
+            'readme',
+            'icon',
+            'cmd_list',
             'installed_status',
+            'app_list',
         )
 
     @staticmethod
@@ -78,58 +137,40 @@ class MCPDetailSerializer(serializers.ModelSerializer):
         if code != 0:
             return Task.Status.NOT_YET
         return Task.Status.SUCCESS
-
-
-class PluginDetailSerializer(serializers.ModelSerializer):
-    tag = serializers.SerializerMethodField()
-    download_status = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Plugin
-        fields = (
-            'name',
-            'version',
-            'description',
-            'readme',
-            'tag',
-            'download_status',
-        )
-
+    
     @staticmethod
-    def get_tag(obj):
-        return ArtifactTag.OEDP
-
-    @staticmethod
-    def get_download_status(obj):
-        if is_process_running(f'oedp init {obj.name}'):
-            return Task.Status.IN_PROCESS
-        if os.path.exists(os.path.join(PLUGIN_CACHE_DIR, obj.name)):
-            return Task.Status.SUCCESS
-        return Task.Status.NOT_YET
+    def get_cmd_list(obj):
+        cmd_list = [
+            f"sudo yum install -y {obj.package_name}"
+        ]
+        return cmd_list
 
 
 class PluginListSerializer(serializers.ListSerializer):
 
     def create(self, validated_data):
-        plugins = [Plugin(**item) for item in validated_data]
-        Plugin.objects.bulk_create(plugins)
+        plugins = [OEDPPlugin(**item) for item in validated_data]
+        OEDPPlugin.objects.bulk_create(plugins)
         return plugins
 
 
 class PluginBulkCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = Plugin
+        model = OEDPPlugin
         fields = (
             'name',
             'version',
+            'key',
             'updated_at',
-            'description',
+            'url',
             'type',
-            'sha256sum',
-            'size',
+            'author',
+            'description',
+            'readme',
             'icon',
-            'download_url',
+            'localhost_available',
+            'action_list',
         )
         list_serializer_class = PluginListSerializer
 
@@ -146,22 +187,26 @@ class PluginBulkCreateSerializer(serializers.ModelSerializer):
 class MCPListSerializer(serializers.ListSerializer):
 
     def create(self, validated_data):
-        mcps = [MCPService(**item) for item in validated_data]
-        MCPService.objects.bulk_create(mcps)
+        mcps = [MCPServer(**item) for item in validated_data]
+        MCPServer.objects.bulk_create(mcps)
         return mcps
 
 
 class MCPBulkCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = MCPService
+        model = MCPServer
         fields = (
             'name',
             'package_name',
             'version',
+            'key',
             'updated_at',
+            'url',
+            'author',
             'description',
-            'size',
-            'repo',
+            'readme',
+            'icon',
+            'app_list',
         )
         list_serializer_class = MCPListSerializer
