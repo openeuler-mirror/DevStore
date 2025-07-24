@@ -11,10 +11,26 @@
 # Create: 2025-07-18
 # ======================================================================================================================
 
+# only for debug
+
 set -e
 
+SCRIPT_DIR=$(dirname $(readlink -f "${BASH_SOURCE[0]}"))
+cd ${SCRIPT_DIR}
+
+# CONFIG
+[ ! -d /etc/dev-store ] && mkdir /etc/dev-store
+rm -rf /etc/dev-store/*
+cp -rf configs/* /etc/dev-store
+
+# LOG
+[ ! -d /var/log/dev-store ] && mkdir /var/log/dev-store
+
+# SRC
 [ ! -d /var/lib/dev-store ] && mkdir -p /var/lib/dev-store
+rm -rf /var/lib/dev-store/*
 [ ! -d /var/lib/dev-store/src ] && mkdir -p /var/lib/dev-store/src
+rm -rf /var/lib/dev-store/src/*
 cp -rf artifacts tasks constants dev_store utils manage.py /var/lib/dev-store/src
 cp -rf services /var/lib/dev-store
 echo "success $(date "+%Y-%m-%d %H:%M:%S")"

@@ -80,7 +80,7 @@ class CustomCipher:
         plaintext = decrypter.update(ciphertext)
         return plaintext
 
-    def _generate_work_key(self, half_key: str) -> (str, str, bytes):
+    def _generate_work_key(self, half_key: str) -> tuple[str, str, bytes]:
         """
         随机生成一个工作秘钥和初始化向量，然后通过根秘钥对工作秘钥进行加密，
         最后将加密后的工作秘钥和初始化向量以 Base64 编码的字符串形式返回,

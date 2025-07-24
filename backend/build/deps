@@ -1,16 +1,16 @@
-mariadb-server   # mariadb 数据库服务端
-expect    # 启动服务脚本需要 expect 命令
-oedp    #
+mariadb-server      # mariadb 数据库服务端
+expect              # 启动服务脚本需要 expect 命令
+oedp
 dnf-plugins-core    # 工具需要 repoquery 用于查询所有 mcp 服务包
 
-python3   #
-python3-mysqlclient   # 连接 mariadb
+python3
+python3-mysqlclient              # 连接 mariadb
 python3-concurrent-log-handler   # 日志
-python3-cryptography  # 自定义加解密需要
-python3-Django   # Web 框架
-python3-django-rest-framework  # (暂无) Web 框架
-python3-pyyaml   # 处理 yaml 文件
-python3-psutil   # 查询进程信息
+python3-cryptography             # 自定义加解密需要
+python3-Django                   # Web 框架
+python3-django-rest-framework    # (暂无) Web 框架
+python3-pyyaml                   # 处理 yaml 文件
+python3-psutil                   # 查询进程信息
 
 # python 相关包
 djangorestframework
