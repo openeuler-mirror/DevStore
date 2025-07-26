@@ -18,11 +18,12 @@ from django.db import models
 class Task(models.Model):
 
     class Type(models.TextChoices):
-        INSTALL_MCP = 'IM', 'install mcp'
-        UNINSTALL_MCP = 'UM', 'uninstall mcp'
-        DOWNLOAD_PLUGIN = 'DP', 'download plugin'
-        INSTALL_PLUGIN = 'IP', 'install plugin'
-        UNINSTALL_PLUGIN = 'UP', 'uninstall plugin'
+        MCP_INSTALL = 'MI', 'mcp install'
+        MCP_UNINSTALL = 'MU', 'mcp uninstall'
+        PLUGIN_DOWNLOAD = 'PD', 'plugin download'
+        PLUGIN_REMOVE = 'PR', 'plugin remove'
+        PLUGIN_ACTION = 'PA', 'plugin action'
+
 
     class Status(models.TextChoices):
         NOT_YET = 'not yet', 'not yet'

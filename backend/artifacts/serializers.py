@@ -33,7 +33,7 @@ class ArtifactSerializer(serializers.Serializer):
     name = serializers.CharField()
     version = serializers.CharField()
     key = serializers.CharField()
-    updated_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
     author = serializers.CharField()
     description = serializers.JSONField()
     icon = serializers.CharField()
@@ -51,8 +51,8 @@ class ArtifactSerializer(serializers.Serializer):
 
 class PluginDetailSerializer(serializers.ModelSerializer):
     tag = serializers.SerializerMethodField()
-    download_status = serializers.SerializerMethodField()
     cmd_list = serializers.SerializerMethodField()
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
 
     class Meta:
         model = OEDPPlugin
@@ -73,20 +73,11 @@ class PluginDetailSerializer(serializers.ModelSerializer):
             'cmd_list',
             'download_status',
             'action_list',
-            
         )
 
     @staticmethod
     def get_tag(obj):
         return ArtifactTag.OEDP
-
-    @staticmethod
-    def get_download_status(obj):
-        if is_process_running(f'oedp init {obj.name}'):
-            return Task.Status.IN_PROCESS
-        if os.path.exists(os.path.join(PLUGIN_CACHE_DIR, obj.name)):
-            return Task.Status.SUCCESS
-        return Task.Status.NOT_YET
     
     @staticmethod
     def get_cmd_list(obj):
@@ -102,6 +93,7 @@ class MCPDetailSerializer(serializers.ModelSerializer):
     tag = serializers.SerializerMethodField()
     installed_status = serializers.SerializerMethodField()
     cmd_list = serializers.SerializerMethodField()
+    updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
     
     class Meta:
         model = MCPServer
@@ -170,6 +162,7 @@ class PluginBulkCreateSerializer(serializers.ModelSerializer):
             'readme',
             'icon',
             'localhost_available',
+            'download_status',
             'action_list',
         )
         list_serializer_class = PluginListSerializer
@@ -210,3 +203,39 @@ class MCPBulkCreateSerializer(serializers.ModelSerializer):
             'app_list',
         )
         list_serializer_class = MCPListSerializer
+
+
+class PluginItemSerializer(serializers.ModelSerializer):
+    """
+    单个OEDPPlugin实例的序列化器，支持更新操作
+    """
+    def update(self, instance, validated_data):
+        """
+        更新OEDPPlugin实例
+        :param instance: 要更新的OEDPPlugin实例
+        :param validated_data: 已验证的数据
+        :return: 更新后的OEDPPlugin实例
+        """
+        # 更新所有允许修改的字段
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance
+
+    class Meta:
+        model = OEDPPlugin
+        fields = (
+            'name',
+            'version',
+            'key',
+            'updated_at',
+            'url',
+            'type',
+            'author',
+            'description',
+            'readme',
+            'icon',
+            'localhost_available',
+            'download_status',
+            'action_list',
+        )
