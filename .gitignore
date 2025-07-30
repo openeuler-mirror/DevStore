@@ -13,7 +13,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -143,6 +142,7 @@ frontend/node_modules
 frontend/dist
 frontend/public/mock
 frontend/mock
+frontend/release
 
 # local env files
 .env.local
