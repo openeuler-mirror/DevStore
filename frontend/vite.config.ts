@@ -13,7 +13,7 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { viteMockServe } from 'vite-plugin-mock';
-import monacoEditorPlugin from 'vite-plugin-monaco-editor';
+// import eslint from 'vite-plugin-eslint2';
 import AutoImport from 'unplugin-auto-import/vite';
 import Components from 'unplugin-vue-components/vite';
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
@@ -29,19 +29,7 @@ export default defineConfig({
   },
   plugins: [
     vue(),
-    monacoEditorPlugin({
-      customWorkers: [
-        {
-          label: 'yaml',
-          entry: 'monaco-editor/esm/vs/language/yaml/yaml.worker'
-        },
-        // 添加其他需要的 worker
-        {
-          label: 'editor',
-          entry: 'monaco-editor/esm/vs/editor/editor.worker'
-        }
-      ],
-    }),
+    // eslint(),
     AutoImport({
       resolvers: [
         OpenDesignResolver(ElementPlusResolver, { importStyle: 'sass' })
@@ -78,10 +66,12 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost'
+    hmr: true,
+    proxy: {
+      '/v1.0': {
+        target: '',
+        changeOrigin: true,
+      }
     }
   },
   define: {
