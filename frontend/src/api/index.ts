@@ -1,0 +1,166 @@
+/* Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * oeDeploy is licensed under the Mulan PSL v2.
+ * You can use this software according to the terms and conditions of the Mulan PSL v2.
+ * You may obtain a copy of Mulan PSL v2 at:
+ *     http://license.coscl.org.cn/MulanPSL2
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
+ * PURPOSE.
+ * See the Mulan PSL v2 for more details.
+ * Create: 2025-07-30
+ * =================================================================================================================== */
+
+import httpRequest from './request';
+
+export interface ServerAndPluginInfoObj {
+  id: string | number;
+  name: string;
+  package_name?: string; // MCP 服务软件包名称
+  version: string;
+  updated: string;
+  url: string;
+  description: {
+    default: string;
+    zh: string;
+    en: string;
+  };
+  icon: string;
+  author: string;
+  readme: string;
+  tag: string;
+  installed_status?: 'not yet' | 'in process' | 'success';
+  download_status?: 'not yet' | 'in process' | 'success' | 'fail';
+  app_list?: string[];
+  action_list?: string[];
+  cmd_list: string[];
+  mcp_json?: string;
+  config_yaml?: string;
+}
+
+export type Tag = 'mcp' | 'oedp';
+
+const prefix = '/v1.0/';
+
+// layout
+// 更新插件
+export function syncRepo() {
+  return httpRequest({
+    url: `${prefix}artifacts/sync/`,
+    method: 'post',
+  });
+}
+
+// 首页
+// 获取 MCP Server / oeDeploy 插件 列表
+export function queryList(params: { tag: Tag; pageSize: number; curPage: number; searchValue: string; sort: 'recommended' | 'newest' }) {
+  return httpRequest({
+    url: `${prefix}artifacts/`,
+    method: 'get',
+    params,
+  });
+}
+
+// layout / 详情页
+// hl: wip 获取日志
+export function fetchLog(params: { type: string }) {
+  return httpRequest({
+    url: `${prefix}log/`,
+    method: 'get',
+    params,
+  });
+}
+
+// 详情页
+// 获取详情页信息
+export function queryDetail(params: { tag: Tag; key: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/details/`,
+    method: 'get',
+    params,
+  });
+}
+
+
+// 详情页 - mcp
+// hl: wip 下载软件包
+export function getPackage(params: { tag: Tag; key: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/download_plugin/`,
+    method: 'post',
+    params,
+  });
+}
+
+// hl: wip 卸载软件包
+export function deletePackage(params: { tag: Tag; key: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/download/`,
+    method: 'delete',
+    params,
+  });
+}
+
+// hl: wip 添加智能体应用
+export function addAgent(params: { tag: Tag; key: string; agent: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/agent/`,
+    method: 'post',
+    params,
+  });
+}
+
+// hl: wip 删除智能体应用
+export function deleteAgent(params: { tag: Tag; key: string; agent: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/agent/`,
+    method: 'delete',
+    params,
+  });
+}
+
+
+// 详情页 - oedp
+// 下载插件
+export function getPlugin(params: { key: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/download_plugin/`,
+    method: 'post',
+    params,
+  });
+}
+
+// 删除软件包
+export function removePlugin(params: { key: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/delete_plugin/`,
+    method: 'post',
+    params,
+  });
+}
+
+// 执行部署操作
+export function issueAction(params: { key: string; actionName: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/plugin_action/`,
+    method: 'post',
+    params,
+  });
+}
+
+// hl: wip 保存修改的 YAML
+export function saveYaml(params: { tag: Tag; key: string; yaml: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/yaml/`,
+    method: 'post',
+    params,
+  });
+}
+
+// hl: wip 还原 YAML
+export function restoreYaml(params: { tag: Tag; key: string }) {
+  return httpRequest({
+    url: `${prefix}artifacts/yaml/`,
+    method: 'post',
+    params,
+  });
+}
