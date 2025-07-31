@@ -23,7 +23,7 @@ TIMEOUT_CODE = 2
 
 class CommandExecutor:
 
-    def __init__(self, cmd, encoding=sys.getdefaultencoding(), timeout=300):
+    def __init__(self, cmd, encoding=sys.getdefaultencoding(), timeout=120):
         self.process = subprocess.Popen(
             cmd, universal_newlines=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE, start_new_session=True,
             encoding=encoding

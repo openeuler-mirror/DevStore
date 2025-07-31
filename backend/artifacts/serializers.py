@@ -19,7 +19,6 @@ from rest_framework import serializers
 
 from artifacts.models import MCPServer, OEDPPlugin
 from constants.choices import ArtifactTag
-from constants.paths import PLUGIN_CACHE_DIR
 from tasks.models import Task
 from utils.cmd_executor import CommandExecutor
 from utils.common import is_process_running

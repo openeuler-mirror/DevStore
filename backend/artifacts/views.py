@@ -12,6 +12,9 @@
 # Create: 2025-07-18
 # ======================================================================================================================
 
+import os
+
+from datetime import datetime
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -55,9 +58,10 @@ class ArtifactViewSet(viewsets.GenericViewSet):
             return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # 仅返回调用结果
+        data_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         msg = "Sync data successfully."
         logger.info(msg)
-        return Response({'is_success': True, 'message': msg}, status=status.HTTP_200_OK)
+        return Response({'is_success': True, 'message': msg, 'time': data_time}, status=status.HTTP_200_OK)
 
     def list(self, request):
         """获取插件和MCP服务列表
@@ -166,6 +170,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         return Response(result, status=status_code)
     
     @action(methods=['POST'], detail=False)
+    @check_scheduler_load
     def plugin_action(self, request):
         """执行插件的某个部署操作
         """
@@ -180,6 +185,33 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         elif 'task_name' in result:
             status_code = status.HTTP_202_ACCEPTED
             
+        return Response(result, status=status_code)
+    
+    @action(methods=['GET'], detail=False)
+    def plugin_config(self, request):
+        """插件用户配置相关操作
+        """
+        logger.info(f"==== API: [POST] /v1.0/artifacts/plugin_config/ ====")
+        key = request.query_params.get('key')
+        operation = request.query_params.get('operation', "get")
+        config_text = request.query_params.get('config_text', "")
+
+        if operation == "set":
+            status_code, result = PluginMethods.set_plugin_config(key, config_text)
+        elif operation == "reset":
+            status_code, result = PluginMethods.reset_plugin_config(key)
+        else:
+            status_code, result = PluginMethods.get_plugin_config(key)
+        
+        return Response(result, status=status_code)
+    
+    @action(methods=['GET'], detail=False)
+    def plugin_log(self, request):
+        """插件用户配置相关操作
+        """
+        logger.info(f"==== API: [POST] /v1.0/artifacts/plugin_log/ ====")
+        key = request.query_params.get('key')
+        status_code, result = PluginMethods.get_plugin_log(key)
         return Response(result, status=status_code)
 
     @action(methods=['GET'], detail=True)
