@@ -20,7 +20,7 @@ from utils.cmd_executor import CommandExecutor
 class InstallMCPTask(BaseTask):
 
     def __init__(self, pkg_name, **kwargs):
-        super().__init__(task_type=Task.Type.INSTALL_MCP, **kwargs)
+        super().__init__(task_type=Task.Type.MCP_INSTALL, **kwargs)
         self.pkg_name = pkg_name
 
     def run(self):

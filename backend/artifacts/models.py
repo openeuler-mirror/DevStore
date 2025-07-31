@@ -41,9 +41,9 @@ class OEDPPlugin(models.Model):
     author = models.CharField("发布者", max_length=256, blank=True, null=True)
     description = JSONField("简介", default=dict, help_text="字典格式,key:语言,value:文本")
     readme = models.TextField("README文本", blank=True, null=True)
-    icon_url = models.CharField("图标url", max_length=2048, default="")
     icon = models.TextField("图标数据", blank=True, null=True)
     localhost_available = models.BooleanField("是否支持本地单节点部署", default=False)
+    download_status = models.CharField("下载状态", max_length=256, default="not yet")
     action_list = JSONField("部署操作列表", default=list, help_text="列表,每个元素包含name,title,description,status")
 
 
@@ -67,6 +67,5 @@ class MCPServer(models.Model):
     author = models.CharField("发布者", max_length=256, blank=True, null=True)
     description = JSONField("简介", default=dict, help_text="字典格式,key:语言,value:文本")
     readme = models.TextField("README文本", blank=True, null=True)
-    icon_url = models.CharField("图标url", max_length=2048, default="")
     icon = models.TextField("图标数据", blank=True, null=True)
     app_list = JSONField("智能体应用列表", default=list, help_text="列表,每个元素包含name,status")
