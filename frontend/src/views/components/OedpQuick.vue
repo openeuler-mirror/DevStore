@@ -17,12 +17,12 @@
       <div class="step-line" />
       <div class="step-num">2</div>
     </div>
-  <!-- 高级设置 -->
+    <!-- 高级设置 -->
     <div class="deploy">
       <!-- 步骤 1 -->
       <div class="step-1">
         <div class="deploy-title">{{ t('detail.downloadPlugin', [props.name]) }}</div>
-        <el-button v-if="props.downloadStatus === 'not yet'" type="primary" class="undeployed-btn" @click="downloadPlugin">
+        <el-button v-if="props.downloadStatus === 'not yet'" type="primary" class="undeployed-btn" @click="throttledDownload">
           {{ t('detail.download') }}
         </el-button>
         <el-button v-else-if="props.downloadStatus === 'in process'" type="primary" class="deploying-btn">
@@ -66,7 +66,7 @@
               :desc="btn.description"
               :is-executing="btn.status"
               :is-allowed="isAllowed"
-              :execute-action="executeAction" />
+              :execute-action="throttledExecution" />
           <el-collapse v-model="activeNames" expand-icon-position="left" class="collapse-enabled">
             <el-collapse-item :title="t('detail.advancedConfig')" :icon="CaretRight" name="config">
               <!-- 代码编辑器 -->
@@ -87,7 +87,7 @@
       <div class="delete-text">{{ t('tip.confirmDelete') }}</div>
       <template #footer>
         <div class="delete-dialog-footer">
-          <el-button @click="confirmDeletePlugin">{{ t('btn.confirm') }}</el-button>
+          <el-button @click="throttledDeletion">{{ t('btn.confirm') }}</el-button>
           <el-button type="primary" @click="isTipVisible = false">{{ t('btn.cancel') }}</el-button>
         </div>
       </template>
@@ -98,6 +98,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { throttle } from 'underscore';
 import { CaretRight } from '@element-plus/icons-vue';
 import { IconAlarm, IconFileText } from '@computing/opendesign-icons';
 import DeployButton from '@/views/components/DeployButton.vue';
@@ -143,6 +144,9 @@ const downloadPlugin = async () => {
   }
 };
 
+// 添加节流：下载插件
+const throttledDownload = throttle(downloadPlugin, 1000);
+
 // 确认 dialog
 const isTipVisible = ref<boolean>(false);
 
@@ -161,6 +165,9 @@ const confirmDeletePlugin = async () => {
   }
 };
 
+// 添加节流：删除插件
+const throttledDeletion = throttle(confirmDeletePlugin, 1000);
+
 // 执行部署动作
 const executeAction = async (action: string) => {
   if (isAllowed.value) {
@@ -176,6 +183,11 @@ const executeAction = async (action: string) => {
     }
   }
 };
+
+// 添加节流：执行部署动作
+const throttledExecution = throttle((action: string) => {
+  executeAction(action)
+}, 1000)
 
 // 日志 dialog
 const isLogVisible = ref<boolean>(false);

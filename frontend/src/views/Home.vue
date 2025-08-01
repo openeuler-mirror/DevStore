@@ -26,9 +26,9 @@
           clearable
           class="search-input"
           @clear="handleClear"
-          @keyup.enter="handleSearch">
+          @keyup.enter="throttledSearch">
         <template #append>
-          <el-icon class="search-icon" @click="handleSearch"><search /></el-icon>
+          <el-icon class="search-icon" @click="throttledSearch"><search /></el-icon>
         </template>
       </el-input>
     </div>
@@ -76,6 +76,7 @@
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import { throttle } from 'underscore';
 import GridDisplay from '@/views/components/GridDisplay.vue';
 import { Search } from '@element-plus/icons-vue';
 import { queryList, Tag } from '@/api/index.ts';
@@ -146,6 +147,9 @@ const handleSearch = async () => {
     await getList();
   }
 };
+
+// 添加节流：搜索
+const throttledSearch = throttle(handleSearch, 1000);
 
 // 仅在 有搜索值 时，重置才重新查询
 const handleClear = async () => {

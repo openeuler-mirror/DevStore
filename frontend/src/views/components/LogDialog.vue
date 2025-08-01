@@ -36,8 +36,6 @@ import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { fetchLog } from '@/api/index.ts';
 
-import { HOME_LOG } from '../../../public/mock/mock.ts';
-
 const {t} = useI18n();
 
 const props = withDefaults(
@@ -62,7 +60,7 @@ const close = () => {
   emit('update:modelValue', false);
 };
 
-const log = ref<string>(HOME_LOG);
+const log = ref<string>('');
 // 获取 log
 const getLog = async () => {
   try {
