@@ -47,7 +47,7 @@
         </div>
         <div class="display-card-author-time">
           <!-- 作者 -->
-          <div class="display-card-author" v-if="itemDetail.author">{{ itemDetail.author ? `@${itemDetail.author}` : '' }}</div>
+          <div v-if="itemDetail.author" class="display-card-author">{{ itemDetail.author ? `@${itemDetail.author}` : '' }}</div>
           <!-- 时间 -->
           <div class="display-card-time">{{ itemDetail.updated_at }}</div>
         </div>
@@ -89,7 +89,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, provide, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { marked } from 'marked';
@@ -100,8 +100,6 @@ import {
   deletePackage,
   addAgent,
   deleteAgent,
-  restoreYaml,
-  saveYaml,
   ServerAndPluginInfoObj,
   Tag,
 } from '@/api/index.ts';
@@ -163,8 +161,6 @@ watch(tabs, (newTabs) => {
 const compiledMarkdown = ref('');
 // 当前页面承接信息的变量
 const itemDetail = ref<ServerAndPluginInfoObj>({});
-// 高级配置 YAML
-const configYaml = ref<string>('');
 // 提示 message 持续时间
 const MESSAGE_DURATION = 3000;
 
@@ -177,8 +173,6 @@ const getDetail = async () => {
       // 处理 md
       const dirtyHtml = marked.parse(itemDetail.value.readme);
       compiledMarkdown.value = DOMPurify.sanitize(dirtyHtml);
-      // 处理 yaml
-      configYaml.value = itemDetail.value.config_yaml;
       // 判断是否支持 oedp 快捷部署
       supportOedpQuick.value = itemDetail.value.localhost_available;
     } else if (res) {
@@ -259,38 +253,6 @@ const deleteApp = async (name: string) => {
     console.error(e);
   }
 };
-
-// OEDP
-// 保存 YAML
-const saveConfigYaml = async (editedYaml: string) => {
-  try {
-    const res = await saveYaml({tag: tag.value, key: '', yaml: editedYaml});
-    if (res && res.is_success) {
-      await getDetail();
-    } else if (res) {
-      console.log(res.message);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-// 还原 YAML
-const restoreConfigYaml = async () => {
-  try {
-    const res = await restoreYaml({tag: tag.value, key: ''});
-    if (res && res.is_success) {
-      await getDetail();
-    } else if (res) {
-      console.log(res.message);
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
-// 传递变量和函数给深层子组件
-provide('configYaml', { configYaml, saveConfigYaml, restoreConfigYaml });
 
 let intervalId = null;
 

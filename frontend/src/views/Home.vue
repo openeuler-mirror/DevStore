@@ -73,7 +73,7 @@
 </template>
 
 <script lang="ts" setup>
-import {ref, watch, onMounted, onUnmounted, computed} from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import GridDisplay from '@/views/components/GridDisplay.vue';
@@ -219,7 +219,6 @@ onMounted(async () => {
   // 启动轮询
   intervalId = setInterval(() => {
     getAndCheck();
-    console.log('轮询中');
   }, 10000);
 });
 

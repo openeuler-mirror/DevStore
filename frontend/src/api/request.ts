@@ -44,9 +44,8 @@ function i18nDataConverter(data: unknown): void {
 
 // 创建一个 axios 实例
 const service = axios.create({
-  // 使用环境变量进行区别
-  // baseURL: 'http://localhost:28080', // 所有的请求地址前缀部分
-  baseURL: '', // 所有的请求地址前缀部分
+  baseURL: 'http://localhost:28080', // 所有的请求地址前缀部分
+  // baseURL: '', // 所有的请求地址前缀部分
   timeout: 120000, // 请求超时时间毫秒
   withCredentials: false, // 异步请求携带cookie（目前无跨域xhr，设置为false）
   headers: {
