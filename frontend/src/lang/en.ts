@@ -75,7 +75,7 @@ export default {
     tip: '提示',
     confirmUninstall: '是否确认卸载？已配置的{0} MCP将不可用。',
     confirmDelete: '是否确认删除？所有的部署操作将不可用。',
-    confirmRestore: '是否确认还原？你对配置文件的修改不会被保留。',
+    confirmReset: '是否确认还原？你对配置文件的修改不会被保留。',
   },
   message: {
     syncSuc: 'Update success',

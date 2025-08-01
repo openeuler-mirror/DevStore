@@ -38,7 +38,7 @@
       </div>
 
       <!--  日志弹窗 -->
-      <log-dialog v-model="isLogVisible" type="DevStore" />
+      <log-dialog v-if="isLogVisible" v-model="isLogVisible" type="DevStore" />
 
       <!-- 下方 slot -->
       <div class="main-slot">

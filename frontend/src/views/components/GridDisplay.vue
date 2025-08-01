@@ -14,7 +14,7 @@
   <div class="display-list-container">
     <!-- 有数据 -->
     <div class="display-list">
-<!-- 展示 -->
+      <!-- 展示 -->
       <div v-show="itemList.length > 0" class="display-list-content">
         <div v-for="item in itemList" :key="item.name" class="display-card" @click="goToDetail(item.key)">
           <div class="display-card-top">

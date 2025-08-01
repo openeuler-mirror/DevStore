@@ -17,7 +17,7 @@ export interface ServerAndPluginInfoObj {
   name: string;
   package_name?: string; // MCP 服务软件包名称
   version: string;
-  updated: string;
+  updated_at: string;
   url: string;
   description: {
     default: string;
@@ -43,7 +43,7 @@ const prefix = '/v1.0/';
 
 // layout
 // 更新插件
-export function syncRepo() {
+export function syncData() {
   return httpRequest({
     url: `${prefix}artifacts/sync/`,
     method: 'post',
@@ -139,7 +139,7 @@ export function removePlugin(params: { key: string }) {
 }
 
 // 执行部署操作
-export function issueAction(params: { key: string; actionName: string }) {
+export function issueAction(params: { key: string; action_name: string }) {
   return httpRequest({
     url: `${prefix}artifacts/plugin_action/`,
     method: 'post',
@@ -147,20 +147,11 @@ export function issueAction(params: { key: string; actionName: string }) {
   });
 }
 
-// hl: wip 保存修改的 YAML
-export function saveYaml(params: { tag: Tag; key: string; yaml: string }) {
+// 获取、修改、还原 YAML
+export function operateYaml(params: { key: string; operation: 'get' | 'set' | 'reset'; config_text: string }) {
   return httpRequest({
-    url: `${prefix}artifacts/yaml/`,
-    method: 'post',
-    params,
-  });
-}
-
-// hl: wip 还原 YAML
-export function restoreYaml(params: { tag: Tag; key: string }) {
-  return httpRequest({
-    url: `${prefix}artifacts/yaml/`,
-    method: 'post',
+    url: `${prefix}artifacts/plugin_config/`,
+    method: 'get',
     params,
   });
 }
