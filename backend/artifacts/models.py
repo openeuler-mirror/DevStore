@@ -43,7 +43,7 @@ class OEDPPlugin(models.Model):
     readme = models.TextField("README文本", blank=True, null=True)
     icon = models.TextField("图标数据", blank=True, null=True)
     localhost_available = models.BooleanField("是否支持本地单节点部署", default=False)
-    download_status = models.CharField("下载状态", max_length=256, default="not yet")
+    download_status = models.CharField("下载状态", max_length=256, default=Task.Status.NOT_YET)
     action_list = JSONField("部署操作列表", default=list, help_text="列表,每个元素包含name,title,description,status")
 
 

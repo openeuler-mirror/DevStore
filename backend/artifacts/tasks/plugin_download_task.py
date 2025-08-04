@@ -44,7 +44,7 @@ class PluginDownloadTask(BaseTask):
         Raises:
             TaskExecuteError: 当下载失败时抛出
         """
-        logger.info(f"Start downloading plugin: {self.plugin.name}")
+        logger.info(f"Start downloading plugin: {self.plugin.key}")
         
         # 确保插件缓存目录存在
         if not os.path.exists(PLUGIN_CACHE_DIR):
@@ -55,11 +55,11 @@ class PluginDownloadTask(BaseTask):
         
         # 执行下载命令
         cmd = ['oedp', 'init', self.plugin.name, '-p', target_project, '-f']
-        cmd_executor = CommandExecutor(cmd)
+        cmd_executor = CommandExecutor(cmd, timeout=580)
         _, stderr, code = cmd_executor.run()
         
         if code != 0:
-            logger.error(f"Failed to download plugin {self.plugin.name}, error: {stderr}")
+            logger.error(f"Failed to download plugin {self.plugin.key}, error: {stderr}")
             # 执行失败需清理目录
             if os.path.exists(target_project):
                 try:
@@ -70,21 +70,21 @@ class PluginDownloadTask(BaseTask):
             
             # 更新插件下载状态 not yet
             if not update_plugin_status(self.plugin, Task.Status.NOT_YET):
-                logger.error(f"Failed to update plugin [{self.plugin.name}] status to [{Task.Status.NOT_YET}]")
+                logger.error(f"Failed to update plugin [{self.plugin.key}] status to [{Task.Status.NOT_YET}]")
                 raise TaskExecuteError(f"Failed to update plugin status")
             
             raise TaskExecuteError(stderr)
         
-        logger.info(f"Successfully downloaded plugin: {self.plugin.name}")
+        logger.info(f"Successfully downloaded plugin: {self.plugin.key}")
         
         # 更新插件下载状态 success
         if not update_plugin_status(self.plugin, Task.Status.SUCCESS):
-            logger.error(f"Failed to update plugin [{self.plugin.name}] status to [{Task.Status.SUCCESS}]")
+            logger.error(f"Failed to update plugin [{self.plugin.key}] status to [{Task.Status.SUCCESS}]")
             raise TaskExecuteError(f"Failed to update plugin status")
         
         action_list = get_plugin_action_list(self.plugin)
         if not update_plugin_action_list(self.plugin, action_list):
-            logger.error(f"Failed to update plugin [{self.plugin.name}] action_list")
+            logger.error(f"Failed to update plugin [{self.plugin.key}] action_list")
             raise TaskExecuteError(f"Failed to update plugin action_list")
         
-        return f"Download plugin [{self.plugin.name}] successfully."
+        return f"Download plugin [{self.plugin.key}] successfully."

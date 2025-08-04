@@ -17,8 +17,8 @@ import os
 import shutil
 import yaml
 
-from django.db import connection
 from pathlib import Path
+from rest_framework import status
 
 from artifacts.models import OEDPPlugin
 from artifacts.serializers import PluginBulkCreateSerializer
@@ -35,6 +35,7 @@ from constants.paths import PLUGIN_REPO_DIR, REPO_DETAILS_DIR, PLUGIN_CACHE_DIR
 from tasks.models import Task
 from tasks.scheduler import scheduler
 from utils.cmd_executor import CommandExecutor
+from utils.common import is_process_running
 from utils.file_handler.base_handler import FileError
 from utils.file_handler.yaml_handler import YAMLHandler
 from utils.logger import init_log
@@ -80,8 +81,14 @@ class PluginMethods:
         logger.info("Query plugin package information successfully.")
 
         # 检查是否已经在下载中
-        if plugin.download_status == Task.Status.IN_PROCESS:
-            msg = f"Plugin [{plugin.name}] download already in process."
+        target_project = os.path.join(PLUGIN_CACHE_DIR, key)
+        if is_process_running(f'oedp init {plugin.name} -p {target_project} -f', timeout=600):
+            # 更新插件下载状态 in process
+            if not update_plugin_status(plugin, Task.Status.IN_PROCESS):
+                msg = f"Plugin [{key}] failed to update status [{Task.Status.IN_PROCESS}]."
+                logger.error(msg)
+                return {'is_success': False, 'message': msg}
+            msg = f"Plugin [{key}] download already in process."
             logger.info(msg)
             return {'is_success': True, 'message': msg}
         
@@ -90,32 +97,32 @@ class PluginMethods:
         if PluginMethods._check_plugin_file_exist(key):
             # 更新插件下载状态 success
             if not update_plugin_status(plugin, Task.Status.SUCCESS):
-                msg = f"Plugin [{plugin.name}] failed to update status [{Task.Status.SUCCESS}]."
+                msg = f"Plugin [{key}] failed to update status [{Task.Status.SUCCESS}]."
                 logger.error(msg)
                 return {'is_success': False, 'message': msg}
 
             # 更新action列表
             action_list = get_plugin_action_list(plugin)
             if not update_plugin_action_list(plugin, action_list):
-                msg = f"Failed to update plugin [{plugin.name}] action_list"
+                msg = f"Failed to update plugin [{key}] action_list"
                 logger.error(msg)
                 return {'is_success': False, 'message': msg}
             
-            msg = f"Plugin [{plugin.name}] already exists."
+            msg = f"Plugin [{key}] already exists."
             logger.info(msg)
             return {'is_success': True, 'message': msg}
 
         logger.info(f"Start to download plugin [{key}].")
         # 更新插件下载状态 in process
         if not update_plugin_status(plugin, Task.Status.IN_PROCESS):
-            msg = f"Plugin [{plugin.name}] failed to update status [{Task.Status.IN_PROCESS}]."
+            msg = f"Plugin [{key}] failed to update status [{Task.Status.IN_PROCESS}]."
             logger.error(msg)
             return {'is_success': False, 'message': msg}
 
         download_plugin_task = PluginDownloadTask(plugin, name=f"plugin_download_{key}_task")
         scheduler.add_task(download_plugin_task)
         
-        msg = f"Plugin [{plugin.name}] begin downloading."
+        msg = f"Plugin [{key}] begin downloading."
         logger.info(msg)
         return {'is_success': True, 'message': msg, 'task_name': download_plugin_task.name}
     
@@ -193,15 +200,24 @@ class PluginMethods:
             logger.error(msg)
             return {'is_success': False, "message": msg}
         
-        # 检查action合法性以及是否正在执行中
+        # 检查action合法性
         action_list = plugin.action_list
         action_object = PluginMethods._get_plugin_action_from_list(action_list, action_name)
         if not action_object:
             msg = f"Plugin [{plugin.name}] has no action [{action_name}]."
             logger.error(msg)
             return {'is_success': False, "message": msg}
-        if action_object['status'] == Task.Status.IN_PROCESS:
+        
+        # 检查是否已经在执行中
+        target_project = os.path.join(PLUGIN_CACHE_DIR, key)
+        if is_process_running(f"oedp run -p {target_project} -lt {action_name}", timeout=3600):
             msg = f"Plugin [{plugin.name}] action [{action_name}] is in process."
+            logger.error(msg)
+            return {'is_success': False, "message": msg}
+        
+        # 每个插件同时只允许触发一个action
+        if is_process_running(f"oedp run -p {target_project} -lt", timeout=3600):
+            msg = f"Plugin [{plugin.name}]'s another action is in process, only one action can be run at a time."
             logger.error(msg)
             return {'is_success': False, "message": msg}
 
@@ -220,6 +236,102 @@ class PluginMethods:
         msg = f"Plugin [{plugin.name}] action [{action_name}] is begin running."
         logger.info(msg)
         return {'is_success': True, 'message': msg, 'task_name': plugin_action_task.name}
+    
+    @staticmethod
+    def get_plugin_config(key: str):
+        if not PluginMethods._check_plugin_file_exist(key):
+            msg = f"Plugin [{key}] is not downloaded or files missing."
+            logger.error(msg)
+            return status.HTTP_400_BAD_REQUEST ,{'is_success': False, "message": msg, "config_text": ""}
+        target_project = os.path.join(PLUGIN_CACHE_DIR, key)
+        config_path = os.path.join(target_project, "config.yaml")
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_text = f.read()
+            msg = f"Get plugin [{key}] config successfully."
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "config_text": config_text}
+        except Exception as e:
+            msg = f"Failed to read plugin [{key}] config file: {str(e)}"
+            logger.error(msg)
+            return status.HTTP_500_INTERNAL_SERVER_ERROR, {'is_success': False, "message": msg, "config_text": ""}
+
+    @staticmethod
+    def set_plugin_config(key: str, config_text: str):
+        if not PluginMethods._check_plugin_file_exist(key):
+            msg = f"Plugin [{key}] is not downloaded or files missing."
+            logger.error(msg)
+            return status.HTTP_400_BAD_REQUEST ,{'is_success': False, "message": msg, "config_text": ""}
+        target_project = os.path.join(PLUGIN_CACHE_DIR, key)
+        config_path = os.path.join(target_project, "config.yaml")
+        config_bak_path = os.path.join(target_project, "config.yaml.bak")
+        
+        try:
+            # 如果备份文件不存在，创建备份
+            if not os.path.exists(config_bak_path) and os.path.exists(config_path):
+                shutil.copy2(config_path, config_bak_path)
+            # 写入新配置
+            fd = os.open(config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write(config_text)
+            msg = f"Set plugin [{key}] config successfully."
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "config_text": ""}
+        except Exception as e:
+            msg = f"Failed to set plugin [{key}] config: {str(e)}"
+            logger.error(msg)
+            return status.HTTP_500_INTERNAL_SERVER_ERROR, {'is_success': False, "message": msg, "config_text": ""}
+
+    @staticmethod
+    def reset_plugin_config(key: str):
+        if not PluginMethods._check_plugin_file_exist(key):
+            msg = f"Plugin [{key}] is not downloaded or files missing."
+            logger.error(msg)
+            return status.HTTP_400_BAD_REQUEST ,{'is_success': False, "message": msg, "config_text": ""}
+        target_project = os.path.join(PLUGIN_CACHE_DIR, key)
+        config_path = os.path.join(target_project, "config.yaml")
+        config_bak_path = os.path.join(target_project, "config.yaml.bak")
+        
+        try:
+            if os.path.exists(config_bak_path):
+                if os.path.exists(config_path):
+                    os.remove(config_path)
+                shutil.copy2(config_bak_path, config_path)
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_text = f.read()
+            msg = f"Reset plugin [{key}] config successfully."
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "config_text": config_text}
+            
+        except Exception as e:
+            msg = f"Failed to reset plugin [{key}] config: {str(e)}"
+            logger.error(msg)
+            return status.HTTP_500_INTERNAL_SERVER_ERROR, {'is_success': False, "message": msg, "config_text": ""}
+    
+    @staticmethod
+    def get_plugin_log(key: str):
+        if not PluginMethods._check_plugin_file_exist(key):
+            msg = f"Plugin [{key}] is not downloaded or files missing."
+            logger.error(msg)
+            return status.HTTP_400_BAD_REQUEST ,{'is_success': False, "message": msg, "config_text": ""}
+        target_project = os.path.join(PLUGIN_CACHE_DIR, key)
+        log_file = os.path.join(target_project, "run.log")
+        if not os.path.exists(log_file):
+            msg = f"Plugin [{key}] has no log file."
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "log_text": ""}
+        
+        try:
+            file_size = os.path.getsize(log_file)
+            if file_size > 100 * 1024:  # 超过100KB
+                with open(log_file, 'rb') as f:
+                    f.seek(-100 * 1024, os.SEEK_END)
+                    log_text = f.read().decode('utf-8', errors='ignore')
+            else:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    log_text = f.read()
+            msg = f"Get log successfully."
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "log_text": log_text}
+        except Exception as e:
+            msg = f"Failed to read log file {log_file}: {str(e)}"
+            logger.error(msg)
+            return status.HTTP_500_INTERNAL_SERVER_ERROR, {'is_success': False, "message": msg, "log_text": ""}
     
     @staticmethod
     def _update_plugin_info():

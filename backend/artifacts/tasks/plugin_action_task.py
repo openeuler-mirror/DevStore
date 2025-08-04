@@ -49,11 +49,10 @@ class PluginActionTask(BaseTask):
         
         action_list = self.plugin.action_list
         target_project = os.path.join(PLUGIN_CACHE_DIR, self.plugin.key)
-        log_file = os.path.join(target_project, "run.log")
         
         # 执行部署操作
-        cmd = ['oedp', 'run', self.action_name, '-p', target_project, '-lt']
-        cmd_executor = CommandExecutor(cmd)
+        cmd = ['oedp', 'run', '-p', target_project, '-lt', self.action_name]
+        cmd_executor = CommandExecutor(cmd, timeout=3600)
         _, stderr, code = cmd_executor.run()
         
         if code != 0:

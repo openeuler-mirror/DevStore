@@ -12,20 +12,25 @@
 # Create: 2025-07-18
 # ======================================================================================================================
 
+import time
 import psutil
 
 
-def is_process_running(keyword):
+def is_process_running(keyword, timeout=600):
     """
     检查是否有进程的命令行或名称中包含指定关键字
     :param keyword: 要搜索的关键字（字符串）
     :return: True/False 表示是否找到匹配的进程
+             如果进程运行超时(可能出现运行故障),则忽略
     """
-    for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
         try:
             # 检查进程名或命令行参数中是否包含关键字
             if keyword.lower() in ' '.join(proc.info['cmdline']).lower() or \
                     keyword.lower() in proc.info['name'].lower():
+                # 检查进程运行时间是否超过600秒
+                if (time.time() - proc.info['create_time']) > timeout:
+                    continue
                 return True
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue

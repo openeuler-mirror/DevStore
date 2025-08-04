@@ -16,9 +16,9 @@ import os
 import yaml
 from django.db import connection
 from tasks.models import Task
-from artifacts.models import OEDPPlugin
 from artifacts.serializers import PluginItemSerializer
 from constants.paths import PLUGIN_CACHE_DIR
+from utils.common import is_process_running
 from utils.logger import init_log
 
 logger = init_log('run.log')
@@ -68,11 +68,14 @@ def get_plugin_action_list(plugin):
         
         action_list = []
         for action_name, action_data in main['action'].items():
+            status = Task.Status.NOT_YET
+            if is_process_running(f"oedp run -p {target_project} -lt {action_name}", timeout=3600):
+                status = Task.Status.IN_PROCESS
             action_info = {
                 "name": action_name,
                 "title": action_data.get('title', action_name),
                 "description": action_data.get('description', ''),
-                "status": Task.Status.NOT_YET
+                "status": status
             }
             action_list.append(action_info)
         
