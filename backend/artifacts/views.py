@@ -29,6 +29,7 @@ from artifacts.serializers import (
 )
 from artifacts.tasks.install_mcp_task import InstallMCPTask
 from artifacts.utils import get_devstore_log
+from utils.mcp_tools import get_mcp_status_in_apps, manage_mcp_config
 from constants.choices import ArtifactTag
 from tasks.models import Task
 from tasks.scheduler import scheduler, check_scheduler_load
@@ -132,6 +133,72 @@ class ArtifactViewSet(viewsets.GenericViewSet):
             
         return Response(result, status=status_code)
 
+    @action(methods=['GET'], detail=False)
+    def mcp_apps_status(self, request):
+        """获取MCP在所有智能体应用中的配置状态"""
+        logger.info(f"==== API: [GET] /v1.0/artifacts/mcp_apps_status/ ====")
+        
+        # 获取必需参数
+        package_name = request.query_params.get('package_name')
+        
+        # 参数验证
+        if not package_name:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: package_name"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logger.info(f"Querying MCP status in apps for: {package_name}")
+        
+        # 调用MCP状态查询方法
+        result = get_mcp_status_in_apps(package_name)
+        
+        # 根据结果设置HTTP状态码
+        status_code = result.get('status_code', status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # 创建响应并添加防缓存头
+        response = Response(result, status=status_code)
+        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        response['Expires'] = '0'
+        return Response(result, status=status_code)
+
+    @action(methods=['POST'], detail=False)
+    def mcp_config_manage(self, request):
+        """管理MCP配置（添加或删除）"""
+        logger.info(f"==== API: [POST] /v1.0/artifacts/mcp_config_manage/ ====")
+        
+        # 获取必需参数
+        action = request.query_params.get('action')
+        package_name = request.query_params.get('package_name')
+        app_name = request.query_params.get('app_name')
+        
+        # 参数验证
+        if not action:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: action"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not package_name:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: package_name"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not app_name:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: app_name"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logger.info(f"Managing MCP config - action: {action}, mcp: {package_name}, app: {app_name}")
+        
+        # 调用MCP配置管理方法
+        result = manage_mcp_config(action, package_name, app_name)
+        
+        # 根据结果设置HTTP状态码
+        status_code = result.get('status_code', status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return Response(result, status=status_code)
 
 
     def list(self, request):
