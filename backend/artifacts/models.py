@@ -68,4 +68,4 @@ class MCPServer(models.Model):
     description = JSONField("简介", default=dict, help_text="字典格式,key:语言,value:文本")
     readme = models.TextField("README文本", blank=True, null=True)
     icon = models.TextField("图标数据", blank=True, null=True)
-    app_list = JSONField("智能体应用列表", default=list, help_text="列表,每个元素包含name,status")
+    mcp_config = JSONField("MCP配置内容",default=dict, help_text="完整的 mcp_config.json 内容",blank=True, null=True)

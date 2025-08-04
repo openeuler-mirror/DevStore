@@ -110,8 +110,8 @@ class MCPDetailSerializer(serializers.ModelSerializer):
             'readme',
             'icon',
             'cmd_list',
+            'mcp_config',
             'installed_status',
-            'app_list',
         )
 
     @staticmethod
@@ -120,7 +120,7 @@ class MCPDetailSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def get_installed_status(obj):
-        if is_process_running(f'yum install -y {obj.package_name}'):
+        if is_process_running(f'dnf install -y --nogpgcheck {obj.package_name}'):
             return Task.Status.IN_PROCESS
         cmd = ['rpm', '-q', obj.package_name]
         cmd_executor = CommandExecutor(cmd)
@@ -132,7 +132,7 @@ class MCPDetailSerializer(serializers.ModelSerializer):
     @staticmethod
     def get_cmd_list(obj):
         cmd_list = [
-            f"sudo yum install -y {obj.package_name}"
+            f"sudo dnf install -y {obj.package_name}"
         ]
         return cmd_list
 
@@ -199,7 +199,7 @@ class MCPBulkCreateSerializer(serializers.ModelSerializer):
             'description',
             'readme',
             'icon',
-            'app_list',
+            'mcp_config',
         )
         list_serializer_class = MCPListSerializer
 

@@ -64,6 +64,76 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         logger.info(msg)
         return Response({'is_success': True, 'message': msg, 'time': data_time}, status=status.HTTP_200_OK)
 
+    @action(methods=['POST'], detail=False, url_path='sync-mcp')
+    def sync_mcp_only(self, request):
+        """单独同步MCP服务信息（新增接口）"""
+        logger.info("==== API: [POST] /v1.0/artifacts/sync-mcp/ ====")
+
+        # 只同步MCP服务信息
+        result = MCPMethods.sync_mcps()
+        if not result['is_success']:
+            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        msg = "Sync MCP data successfully."
+        logger.info(msg)
+        return Response({'is_success': True, 'message': msg}, status=status.HTTP_200_OK)
+
+
+    @action(methods=['POST'], detail=False)
+    @check_scheduler_load
+    def mcp_install(self, request):
+        """安装MCP包"""
+        logger.info(f"==== API: [POST] /v1.0/artifacts/mcp_install/ ====")
+        
+        # 获取必需参数
+        key = request.query_params.get('key')
+        
+        # 参数验证
+        if not key:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: {key}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logger.info(f"Installing MCP package for key: {key}")
+        
+        # 调用统一的MCP包管理方法
+        result = MCPMethods.mcp_package_action(key, 'install')
+        
+        # 根据结果设置HTTP状态码
+        status_code = result.get('status_code', status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return Response(result, status=status_code)
+
+
+    @action(methods=['POST'], detail=False)
+    @check_scheduler_load
+    def mcp_uninstall(self, request):
+        """卸载MCP包"""
+        logger.info(f"==== API: [POST] /v1.0/artifacts/mcp_uninstall/ ====")
+        
+        # 获取必需参数
+        key = request.query_params.get('key')
+        
+        # 参数验证
+        if not key:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: {key}"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        logger.info(f"Uninstalling MCP package for key: {key}")
+        
+        # 调用统一的MCP包管理方法
+        result = MCPMethods.mcp_package_action(key, 'uninstall')
+        
+        # 根据结果设置HTTP状态码
+        status_code = result.get('status_code', status.HTTP_500_INTERNAL_SERVER_ERROR)
+            
+        return Response(result, status=status_code)
+
+
+
     def list(self, request):
         """获取插件和MCP服务列表
         """
@@ -219,103 +289,3 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         else:
             status_code, result = PluginMethods.get_plugin_log(key)
         return Response(result, status=status_code)
-
-    @action(methods=['GET'], detail=True)
-    @check_scheduler_load
-    def install_mcp(self, request, pk):
-        """安装MCP服务
-        """
-        # TODO：同一时间只能安装一个 mcp-servers-xxx 的包
-        # TODO：无法安装正在卸载的包
-        logger.info(f'==== API: [GET] /v1.0/artifacts/{pk}/install_mcp/ ====')
-        # 查询 MCP 服务包信息
-        logger.info("Start query MCP service package information by key.")
-        try:
-            mcp_service = MCPServer.objects.get(id=pk)
-        except MCPServer.DoesNotExist:
-            msg = f"The MCP service with key {pk} does not exist."
-            logger.error(msg)
-            return Response({
-                'is_success': False,
-                'message': msg
-            }, status.HTTP_400_BAD_REQUEST)
-        logger.info("Query MCP service package successfully.")
-
-        # 检查 MCP 服务包是否已经安装，后端进行二次校验
-        pkg_name = mcp_service.package_name
-        logger.info(f"Start to check whether package {pkg_name} is installed.")
-        cmd = ['rpm', '-q', pkg_name]
-        cmd_executor = CommandExecutor(cmd)
-        _, _, code = cmd_executor.run()
-        if code == 0:
-            msg = f"{pkg_name} has been installed."
-            logger.info(msg)
-            return Response({
-                'is_success': True,
-                'message': msg
-            }, status=status.HTTP_200_OK)
-
-        # 安装 MCP 服务包
-        logger.info(f"Start to install package {pkg_name}")
-        install_mcp_task = InstallMCPTask(pkg_name, name=f"install_{pkg_name}_task")
-        scheduler.add_task(install_mcp_task)
-        return Response({
-            'is_success': True,
-            'message': f"Package {pkg_name} is being installed.",
-            'task_name': install_mcp_task.name
-        }, status=status.HTTP_202_ACCEPTED)
-
-    @action(methods=['GET'], detail=True)
-    def uninstall_mcp(self, request, pk):
-        """卸载MCP服务
-        """
-        # TODO：无法卸载正在安装的包
-        logger.info(f"==== API: [GET] /v1.0/artifacts/{pk}/uninstall_mcp/ ====")
-        # 查询 MCP 服务包信息
-        logger.info("Start query MCP service package information by key.")
-        try:
-            mcp_service = MCPServer.objects.get(id=pk)
-        except MCPServer.DoesNotExist:
-            msg = f"The MCP service with key {pk} does not exist."
-            logger.error(msg)
-            return Response({
-                'is_success': False,
-                'message': msg
-            }, status.HTTP_400_BAD_REQUEST)
-        logger.info("Query MCP service package successfully.")
-
-        # 检查 MCP 服务包是否已经安装，后端进行二次校验
-        pkg_name = mcp_service.package_name
-        logger.info(f"Start to check whether package {pkg_name} is installed.")
-        cmd = ['rpm', '-q', pkg_name]
-        cmd_executor = CommandExecutor(cmd)
-        _, _, code = cmd_executor.run()
-        if code != 0:
-            msg = f"{pkg_name} isn't installed."
-            logger.info(msg)
-            return Response({
-                'is_success': True,
-                'message': msg
-            }, status=status.HTTP_200_OK)
-
-        # 卸载 MCP 服务包
-        logger.info(f"Start to uninstall package {pkg_name}")
-        cmd = ['yum', 'remove', '-y', pkg_name]
-        cmd_executor = CommandExecutor(cmd)
-        _, stderr, code = cmd_executor.run()
-        if code != 0:
-            logger.error(f"Failed to uninstall {pkg_name}, error: {stderr}")
-            return Response({
-                'is_success': False,
-                'message': stderr
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        msg = f"Package {pkg_name} is uninstalled successfully."
-        logger.info(msg)
-        return Response({
-            'is_success': True,
-            'message': msg
-        }, status=status.HTTP_200_OK)
-
-    @action(methods=['GET'], detail=True)
-    def add_to_agent_app(self, request, pk):
-        pass

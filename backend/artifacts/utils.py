@@ -13,14 +13,16 @@
 # ======================================================================================================================
 
 import os
+import subprocess
 import yaml
 from django.db import connection
 from tasks.models import Task
+from artifacts.models import MCPServer
 from artifacts.serializers import PluginItemSerializer
 from constants.paths import PLUGIN_CACHE_DIR, LOG_DIR
 from utils.common import is_process_running
+from utils.cmd_executor import CommandExecutor
 from utils.logger import init_log
-
 logger = init_log('run.log')
 
 
@@ -133,3 +135,17 @@ def get_devstore_log():
     except Exception as e:
         logger.error(f"Unexpected error while reading log file {log_file}: {str(e)}")
         return f"读取日志文件时发生未知错误: {str(e)}"
+
+def check_system_rpm_installed(package_name: str) -> bool:
+    """检查RPM包是否已在系统中安装"""
+    try:
+        cmd = ['rpm', '-q', package_name]
+        cmd_executor = CommandExecutor(cmd, timeout=30)
+        _, _, code = cmd_executor.run()
+        if code == 0:
+            return True
+        else:
+            return False
+    except Exception:
+        return False
+
