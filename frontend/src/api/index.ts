@@ -12,6 +12,24 @@
 
 import httpRequest from './request';
 
+// 同步数据响应接口
+export interface SyncResponse {
+  is_success: boolean;
+  time?: string;
+  message?: string;
+}
+
+// 查询列表响应接口
+export interface QueryListResponse {
+  is_success: boolean;
+  data?: {
+    results: ServerAndPluginInfoObj[];
+    mcp_count: number;
+    oedp_count: number;
+  };
+  message?: string;
+}
+
 export interface ServerAndPluginInfoObj {
   id: string | number;
   name: string;
@@ -43,7 +61,7 @@ const prefix = '/v1.0/';
 
 // layout
 // 更新插件
-export function syncData() {
+export function syncData(): Promise<SyncResponse> {
   return httpRequest({
     url: `${prefix}artifacts/sync/`,
     method: 'post',
@@ -52,7 +70,7 @@ export function syncData() {
 
 // 首页
 // 获取 MCP Server / oeDeploy 插件 列表
-export function queryList(params: { tag: Tag; pageSize: number; curPage: number; searchValue: string; sort: 'recommended' | 'newest' }) {
+export function queryList(params: { tag: Tag; pageSize: number; curPage: number; searchValue: string; sort: 'recommended' | 'newest' }): Promise<QueryListResponse> {
   return httpRequest({
     url: `${prefix}artifacts/`,
     method: 'get',
@@ -85,7 +103,7 @@ export function queryDetail(params: { tag: Tag; key: string }) {
 // hl: wip 下载软件包
 export function getPackage(params: { tag: Tag; key: string }) {
   return httpRequest({
-    url: `${prefix}artifacts/download_plugin/`,
+    url: `${prefix}artifacts/mcp_install/`,
     method: 'post',
     params,
   });
@@ -94,8 +112,8 @@ export function getPackage(params: { tag: Tag; key: string }) {
 // hl: wip 卸载软件包
 export function deletePackage(params: { tag: Tag; key: string }) {
   return httpRequest({
-    url: `${prefix}artifacts/download/`,
-    method: 'delete',
+    url: `${prefix}artifacts/mcp_uninstall/`,
+    method: 'post',
     params,
   });
 }

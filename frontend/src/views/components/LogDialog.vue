@@ -34,7 +34,7 @@
 <script lang="ts" setup>
 import { ref, watch, nextTick, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { fetchLog } from '@/api/index.ts';
+import { fetchLog } from '@/api/index';
 
 const {t} = useI18n();
 

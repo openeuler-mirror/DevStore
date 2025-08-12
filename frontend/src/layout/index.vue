@@ -51,9 +51,11 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { ElMessage } from 'element-plus';
 import { IconLoad } from '@computing/opendesign-icons';
 import LogDialog from '@/views/components/LogDialog.vue';
-import { syncData } from '@/api/index.ts';
+import { syncData, type SyncResponse } from '@/api/index';
+import { eventBus, EVENT_TYPES } from '@/utils/eventBus';
 
 const {t} = useI18n();
 const isLogVisible = ref<boolean>(false);
@@ -63,16 +65,18 @@ const updateTime = ref<string>('2025');
 // 点击右上角同步，更新同步时间
 const handleSync = async () => {
   try {
-    const res = await syncData();
+    const res: SyncResponse = await syncData();
     if (res && res.is_success) {
       // 显示更新时间
-      updateTime.value = res.time;
+      updateTime.value = res.time || '';
       // 提示更新成功
       ElMessage.success({
         message: t('message.syncSuc'),
         duration: MESSAGE_DURATION,
         showClose: true,
       });
+      // 发送同步成功事件，触发Home页面立即刷新
+      eventBus.emit(EVENT_TYPES.SYNC_SUCCESS);
     } else if (res) {
       // 提示更新失败
       ElMessage.warning({
@@ -90,9 +94,9 @@ const handleSync = async () => {
 // 同步函数
 const sync = async () => {
   try {
-    const res = await syncData();
+    const res: SyncResponse = await syncData();
     if (res && res.is_success) {
-      updateTime.value = res.time;
+      updateTime.value = res.time || '';
     } else if (res) {
       console.log(res.message);
     }
@@ -139,12 +143,20 @@ onMounted(async () => {
         border: none;
         background-color: transparent;
         li {
-          font-size: 16px;
+          font-size: 14px;
           color: var(--o-text-color-primary);
         }
         .dev-store {
           font-weight: 600;
           font-size: 18px;
+        }
+        .el-menu-item a {
+          color: var(--o-text-color-primary);
+          text-decoration: none;
+          font-size: 16px;
+          &:hover {
+            color: var(--o-text-color-primary);
+          }
         }
       }
     }
@@ -177,12 +189,88 @@ onMounted(async () => {
 </style>
 
 <style lang="scss">
+/* 代码仓库菜单样式 */
 .code-repository {
-  i {
-    display: none;
+  & > .el-sub-menu__title {
+    font-size: 14px;
+    color: var(--o-text-color-primary) !important;
   }
-  div {
-    color: white;
+  .el-menu-item {
+    font-size: 14px !important;
+    color: var(--o-text-color-primary) !important;
+    &:hover {
+      color: var(--o-text-color-primary) !important;
+    }
+    
+    a {
+      color: var(--o-text-color-primary) !important;
+      text-decoration: none !important;
+      font-size: 14px !important;
+      display: block !important;
+      width: 100% !important;
+      padding: 0 20px !important;
+      transition: color 0.3s ease !important;
+      
+      &:hover {
+        color: var(--o-theme-color-primary-blue) !important;
+      }
+      
+      &:visited {
+        color: var(--o-text-color-primary) !important;
+      }
+      
+      &:focus {
+        outline: none !important;
+        color: var(--o-theme-color-primary-blue) !important;
+      }
+      
+      &:active {
+        color: var(--o-theme-color-primary-blue) !important;
+      }
+    }
+  }
+}
+
+/* Element UI 下拉菜单通用样式 */
+.el-sub-menu .el-menu,
+.el-sub-menu__drop-down,
+.el-menu--vertical,
+.el-popper .el-menu,
+body .el-popper[data-popper-placement^="bottom"],
+body .el-popper[data-popper-placement^="bottom"] .el-menu {
+  background-color: var(--o-background-color-tertiary-light) !important;
+  border: 2px solid var(--o-background-color-quaternary-light) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.el-sub-menu .el-menu .el-menu-item,
+.el-sub-menu__drop-down .el-menu-item,
+.el-menu--vertical .el-menu-item,
+.el-popper .el-menu .el-menu-item,
+body .el-popper[data-popper-placement^="bottom"] .el-menu-item {
+  background-color: transparent !important;
+  
+  &:hover {
+    background-color: var(--o-background-color-quaternary-light) !important;
+  }
+}
+
+/* 链接通用样式 */
+.el-sub-menu__title, .el-menu-item {
+  a {
+    color: var(--o-text-color-primary) !important;
+    text-decoration: none !important;
+    
+    &:link, &:visited {
+      color: var(--o-text-color-primary) !important;
+      text-decoration: none !important;
+    }
+    
+    &:hover, &:focus {
+      color: var(--o-theme-color-primary-blue) !important;
+      text-decoration: none !important;
+    }
   }
 }
 </style>
