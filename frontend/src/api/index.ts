@@ -78,11 +78,18 @@ export function queryList(params: { tag: Tag; pageSize: number; curPage: number;
   });
 }
 
+// 获取日志响应接口
+export interface LogResponse {
+  is_success: boolean;
+  log?: string;
+  message?: string;
+}
+
 // layout / 详情页
 // hl: wip 获取日志
-export function fetchLog(params: { type: string }) {
+export function fetchLog(params: { key: string }): Promise<LogResponse> {
   return httpRequest({
-    url: `${prefix}log/`,
+    url: `${prefix}artifacts/log/`,
     method: 'get',
     params,
   });

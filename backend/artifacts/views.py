@@ -28,12 +28,13 @@ from artifacts.serializers import (
     PluginDetailSerializer,
 )
 from artifacts.tasks.install_mcp_task import InstallMCPTask
+from artifacts.utils import get_devstore_log
 from constants.choices import ArtifactTag
-from constants.paths import PLUGIN_CACHE_DIR
 from tasks.models import Task
 from tasks.scheduler import scheduler, check_scheduler_load
 from utils.cmd_executor import CommandExecutor
 from utils.logger import init_log
+
 
 logger = init_log('run.log')
 
@@ -87,7 +88,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         data.update(response.data)
         msg = "Get list information successfully."
         response.data = { 'is_success': True, 'message': msg, 'data': data }
-        logger.info(msg)
+        logger.debug(msg)
         return response
     
     @action(methods=['GET'], detail=False)
@@ -206,12 +207,17 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         return Response(result, status=status_code)
     
     @action(methods=['GET'], detail=False)
-    def plugin_log(self, request):
+    def log(self, request):
         """插件用户配置相关操作
         """
-        logger.info(f"==== API: [POST] /v1.0/artifacts/plugin_log/ ====")
+        logger.debug(f"==== API: [POST] /v1.0/artifacts/log/ ====")
         key = request.query_params.get('key')
-        status_code, result = PluginMethods.get_plugin_log(key)
+        if key == "DevStore":
+            log_text = get_devstore_log()
+            result = {'is_success': True, "message": "Fetch DevStore log done.", "log": log_text}
+            status_code = status.HTTP_200_OK
+        else:
+            status_code, result = PluginMethods.get_plugin_log(key)
         return Response(result, status=status_code)
 
     @action(methods=['GET'], detail=True)

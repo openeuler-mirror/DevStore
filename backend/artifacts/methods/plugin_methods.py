@@ -310,12 +310,12 @@ class PluginMethods:
         if not PluginMethods._check_plugin_file_exist(key):
             msg = f"Plugin [{key}] is not downloaded or files missing."
             logger.error(msg)
-            return status.HTTP_400_BAD_REQUEST ,{'is_success': False, "message": msg, "config_text": ""}
+            return status.HTTP_400_BAD_REQUEST ,{'is_success': False, "message": msg, "log": ""}
         target_project = os.path.join(PLUGIN_CACHE_DIR, key)
         log_file = os.path.join(target_project, "run.log")
         if not os.path.exists(log_file):
             msg = f"Plugin [{key}] has no log file."
-            return status.HTTP_200_OK, {'is_success': True, "message": msg, "log_text": ""}
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "log": ""}
         
         try:
             file_size = os.path.getsize(log_file)
@@ -327,11 +327,11 @@ class PluginMethods:
                 with open(log_file, 'r', encoding='utf-8') as f:
                     log_text = f.read()
             msg = f"Get log successfully."
-            return status.HTTP_200_OK, {'is_success': True, "message": msg, "log_text": log_text}
+            return status.HTTP_200_OK, {'is_success': True, "message": msg, "log": log_text}
         except Exception as e:
             msg = f"Failed to read log file {log_file}: {str(e)}"
             logger.error(msg)
-            return status.HTTP_500_INTERNAL_SERVER_ERROR, {'is_success': False, "message": msg, "log_text": ""}
+            return status.HTTP_500_INTERNAL_SERVER_ERROR, {'is_success': False, "message": msg, "log": ""}
     
     @staticmethod
     def _update_plugin_info():

@@ -18,7 +18,7 @@
       :close-on-click-modal="false"
       class="log-dialog-unscoped"
       @close="close">
-    <div ref="logContent" @scroll="scrollFunc">
+    <div ref="logContent" class="log-content" @scroll="scrollFunc">
       {{ log }}
     </div>
     <template #footer>
@@ -64,9 +64,9 @@ const log = ref<string>('');
 // 获取 log
 const getLog = async () => {
   try {
-    const res = await fetchLog({type: props.type});
-    if (res && res.is_success) {
-      log.value = res.data.log;
+    const res = await fetchLog({key: props.type});
+    if (res && res.is_success && res.log) {
+      log.value = res.log || '';
     } else if (res) {
       console.log(res.message);
     }
@@ -76,7 +76,7 @@ const getLog = async () => {
 };
 
 // 轮询 log
-let intervalId = null;
+let intervalId: NodeJS.Timeout | null = null;
 onMounted(async () => {
   await getLog();
 
@@ -93,32 +93,84 @@ onUnmounted(() => {
   }
 });
 
-// hl: 待验证，自动滚动
-const logContent = ref<any>('logContent');
+// 自动滚动逻辑
+const logContent = ref<HTMLElement>();
+let isAutoScrollEnabled = true; // 是否启用自动滚动到底部
 let lastScrollTop = 0;
-let isStopped = false;
 
-const scrollFunc = (e) => {
-  const { scrollTop, scrollHeight, clientHeight } = e.target;
-  if (scrollTop < lastScrollTop) {
-    isStopped = true;
-  } else if (scrollTop === scrollHeight - clientHeight) {
-    isStopped = false;
-  }
-  lastScrollTop = scrollTop;
+// 检查是否滚动到底部
+const isScrolledToBottom = (element: HTMLElement): boolean => {
+  const { scrollTop, scrollHeight, clientHeight } = element;
+  // 允许1px的误差
+  return Math.abs(scrollHeight - clientHeight - scrollTop) <= 1;
 };
 
-const setScrollTop = () => {
+// 滚动到底部
+const scrollToBottom = () => {
   nextTick(() => {
-    if (logContent.value && !isStopped) {
-      const scrollTop = (logContent.value?.scrollHeight as number) - (logContent.value?.clientHeight as number);
-      logContent.value.scrollTop = scrollTop;
+    if (logContent.value) {
+      const element = logContent.value;
+      element.scrollTop = element.scrollHeight;
     }
   });
 };
-watch(() => log.value, setScrollTop);
 
-onMounted(setScrollTop);
+// 滚动事件处理
+const scrollFunc = (e: Event) => {
+  const target = e.target as HTMLElement;
+  const { scrollTop } = target;
+  
+  // 如果向上滚动，停止自动滚动
+  if (scrollTop < lastScrollTop) {
+    isAutoScrollEnabled = false;
+  } 
+  // 如果滚动到底部，恢复自动滚动
+  else if (isScrolledToBottom(target)) {
+    isAutoScrollEnabled = true;
+  }
+  
+  lastScrollTop = scrollTop;
+};
+
+// 监听日志内容变化，自动滚动到底部（仅当启用自动滚动时）
+watch(() => log.value, (newValue, oldValue) => {
+  if (isAutoScrollEnabled) {
+    scrollToBottom();
+  }
+  
+  // 首次加载日志内容时，确保滚动到底部
+  if (props.modelValue && oldValue === '' && newValue) {
+    nextTick(() => {
+      setTimeout(() => {
+        scrollToBottom();
+      }, 50);
+    });
+  }
+});
+
+// 对话框打开时重置自动滚动状态
+watch(() => props.modelValue, (newValue) => {
+  if (newValue) {
+    isAutoScrollEnabled = true;
+    
+    // 多次尝试滚动到底部，确保成功
+    const tryScrollToBottom = (attempts = 0) => {
+      if (attempts >= 10) return; // 最多尝试10次
+      
+      nextTick(() => {
+        setTimeout(() => {
+          if (logContent.value && log.value) {
+            scrollToBottom();
+          } else {
+            tryScrollToBottom(attempts + 1);
+          }
+        }, 100 * (attempts + 1)); // 递增延时
+      });
+    };
+    
+    tryScrollToBottom();
+  }
+});
 </script>
 
 <style lang="scss">
@@ -138,9 +190,19 @@ onMounted(setScrollTop);
     padding: 0 24px 0 0;
     font-size: 12px;
     line-height: 20px;
-    white-space: pre;
-    div {
+    white-space: pre-wrap;
+    overflow: hidden; /* 确保外层没有滚动条 */
+    
+    .log-content {
       font-family: monospace;
+      border: 1px solid #dcdfe6;
+      padding: 12px;
+      background-color: #f5f7fa;
+      height: 400px;
+      overflow-y: auto;
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
   }
   .el-button {
