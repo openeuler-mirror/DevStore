@@ -109,7 +109,6 @@ import loading from '@/assets/img/loading.svg';
 import success from '@/assets/img/success.svg';
 
 const {t} = useI18n();
-const activeNames = ref(['config']);
 
 const props = withDefaults(
   defineProps<{
@@ -126,6 +125,9 @@ const props = withDefaults(
     actionList: () => [],
   }
 );
+
+// 高级配置默认折叠，只有用户手动点击时才展开
+const activeNames = ref([]);
 
 // 检查 actionList 中是否至少有一个 action 正在进行，如果有的话，所有按钮都不允许执行
 const isAllowed = computed(() => !props.actionList.some(item => item?.status === 'in process'));
@@ -337,21 +339,30 @@ const isLogVisible = ref<boolean>(false);
             }
           }
           :deep(.el-collapse-item__content) {
+            padding: 0 !important;
+            margin: 0 !important;
             border: 1px solid var(--o-background-color-quaternary-light);
             border-radius: 4px;
+          }
+          :deep(.el-collapse-item__wrap) {
+            padding: 0 !important;
+            margin: 0 !important;
           }
         }
         .delete-btn {
           width: 100%;
           margin-top: 8px;
+          margin-bottom: 16px;
         }
       }
     }
   }
 }
 .config-editor {
-  height: 400px;
+  height: 300px;
+  max-height: 50vh;
   width: 100%;
+  overflow: hidden;
 }
 </style>
 

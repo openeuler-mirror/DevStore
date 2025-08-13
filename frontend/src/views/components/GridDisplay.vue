@@ -69,6 +69,7 @@
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { Tag } from '@/api/index.ts';
+import { generateIconBgColor } from '@/utils/index.ts';
 
 // 待完善注释
 const router = useRouter();
@@ -90,19 +91,6 @@ const goToDetail = (key) => {
   router.push(`/${props.tag}/${key}`);
 };
 
-// 如果没有 icon 图片，生成背景色
-function generateIconBgColor(inputString: string): string {
-  let hash = 0;
-  for (let i = 0; i < inputString.length; i++) {
-    hash = ((hash << 5) - hash) + inputString.charCodeAt(i);
-    hash |= 0;
-  }
-  hash = Math.abs(hash);
-  const r = (hash % 128) + 1;
-  const g = ((hash >> 8) % 128) + 1;
-  const b = (((hash >> 16) ^ inputString.length) % 128) + 1;
-  return `rgb(${r}, ${g}, ${b})`;
-}
 </script>
 
 <style scoped lang="scss">
@@ -154,7 +142,8 @@ function generateIconBgColor(inputString: string): string {
               border-radius: 50%;
               line-height: 48px;
               text-align: center;
-              font-size: 16px;
+              font-size: 24px;
+              font-weight: 700;
               color: var(--o-background-color-primary-light);
             }
           }
@@ -200,7 +189,8 @@ function generateIconBgColor(inputString: string): string {
           height: 44px;
           margin-bottom: 16px;
           > span {
-            line-height: 22px;
+            font-size: 13px;
+            line-height: 18px;
             margin-bottom: 16px;
           }
         }

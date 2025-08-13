@@ -8,7 +8,7 @@
       "DOM",
       "DOM.Iterable"
     ],
-    "types": ["vue"],
+
     "skipLibCheck": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -35,7 +35,7 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue"],
+  "include": ["src/**/*.ts", "src/**/*.vue", "src/**/*.d.ts"],
   "exclude": [ "node_modules"],
   "files": [],
   "references": [

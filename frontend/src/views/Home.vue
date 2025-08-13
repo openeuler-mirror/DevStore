@@ -28,7 +28,7 @@
           @clear="handleClear"
           @keyup.enter="throttledSearch">
         <template #append>
-          <el-icon class="search-icon" @click="throttledSearch"><search /></el-icon>
+          <el-icon class="search-icon" @click="throttledSearch"><Search /></el-icon>
         </template>
       </el-input>
     </div>
@@ -78,8 +78,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { throttle } from 'underscore';
 import GridDisplay from '@/views/components/GridDisplay.vue';
-import { Search } from '@element-plus/icons-vue';
-import { queryList, Tag } from '@/api/index.ts';
+import { queryList, Tag, type QueryListResponse } from '@/api/index.ts';
+import { eventBus, EVENT_TYPES } from '@/utils/eventBus';
 
 const route = useRoute();
 const router = useRouter();
@@ -108,14 +108,14 @@ const pageSize = ref(10);
 const activeSortTab = ref('rec');
 const getList = async () => {
   try {
-    const res = await queryList({
-      tag: tag.value,
+    const res: QueryListResponse = await queryList({
+      tag: tag.value as Tag,
       pageSize: pageSize.value,
       curPage: currentPage.value,
       searchValue: searchValue.value,
-      sort: activeSortTab.value,
+      sort: activeSortTab.value as 'recommended' | 'newest',
     });
-    if (res && res.is_success) {
+    if (res && res.is_success && res.data) {
       itemList.value = res.data.results;
       mcpCount.value = res.data.mcp_count;
       oedpCount.value = res.data.oedp_count;
@@ -205,10 +205,16 @@ watch(
 );
 
 // 轮询
-let intervalId = null;
+let intervalId: number | null = null;
 const getAndCheck = async () => {
   await getList();
   // 判断停止轮询的逻辑加在这里
+};
+
+// 监听同步成功事件的处理函数
+const handleSyncSuccess = async () => {
+  // 立即刷新数据
+  await getAndCheck();
 };
 
 // 轮询时机
@@ -224,13 +230,18 @@ onMounted(async () => {
   intervalId = setInterval(() => {
     getAndCheck();
   }, 10000);
+
+  // 监听同步成功事件
+  eventBus.on(EVENT_TYPES.SYNC_SUCCESS, handleSyncSuccess);
 });
 
-// 页面卸载时清除定时器
+// 页面卸载时清除定时器和事件监听器
 onUnmounted(() => {
   if (intervalId) {
     clearInterval(intervalId);
   }
+  // 移除事件监听器
+  eventBus.off(EVENT_TYPES.SYNC_SUCCESS, handleSyncSuccess);
 });
 </script>
 

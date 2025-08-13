@@ -3,12 +3,16 @@
   "compilerOptions": {
     "outDir": "dist/main",
     "composite": true,
+    "noEmit": false,
     "declaration": true,
+    "allowImportingTsExtensions": false,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/main/**/*.ts", "src/main/**/*.vue"],
+  "include": [
+    "electron/**/*.js"
+  ],
   "exclude": ["node_modules"]
 }

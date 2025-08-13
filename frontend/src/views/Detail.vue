@@ -35,7 +35,7 @@
             <div class="display-card-id">{{ itemDetail.name }}</div>
             <div class="display-card-tag-version">
               <!-- 分类 -->
-              <div class="display-card-tag">{{ itemDetail.tag }}</div>
+              <div class="display-card-tag">{{ itemDetail.tag?.toUpperCase() }}</div>
               <!-- 版本 -->
               <div class="display-card-version">{{ itemDetail.version }}</div>
             </div>
@@ -103,6 +103,7 @@ import {
   ServerAndPluginInfoObj,
   Tag,
 } from '@/api/index.ts';
+import { generateIconBgColor } from '@/utils/index.ts';
 
 import McpQuick from '@/views/components/McpQuick.vue';
 import McpCli from '@/views/components/McpCli.vue';
@@ -183,19 +184,6 @@ const getDetail = async () => {
   }
 };
 
-// 如果没有 icon 图片，生成背景色
-function generateIconBgColor(inputString: string): string {
-  let hash = 0;
-  for (let i = 0; i < inputString.length; i++) {
-    hash = ((hash << 5) - hash) + inputString.charCodeAt(i);
-    hash |= 0;
-  }
-  hash = Math.abs(hash);
-  const r = (hash % 128) + 1;
-  const g = ((hash >> 8) % 128) + 1;
-  const b = (((hash >> 16) ^ inputString.length) % 128) + 1;
-  return `rgb(${r}, ${g}, ${b})`;
-}
 
 // MCP
 // 下载软件包
@@ -375,7 +363,8 @@ onUnmounted(() => {
           border-radius: 50%;
           line-height: 48px;
           text-align: center;
-          font-size: 16px;
+          font-size: 24px;
+          font-weight: 700;
           color: var(--o-background-color-primary-light);
         }
       }
@@ -439,12 +428,17 @@ onUnmounted(() => {
     background-color: var(--o-background-color-secondary-light);
     font-size: 14px;
     line-height: 22px;
+    /* 添加文本换行和溢出处理 */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: auto;
+    min-width: 0; /* 允许flex item收缩到内容尺寸以下 */
     h1, h2, h3, h4, h5, h6, ol, ul, li, span, div, p {
       margin-bottom: 8px;
     }
   }
   .detail-deploy {
-    height: 100%;
     flex: 1;
     position: sticky;
     top: 0;
@@ -454,6 +448,8 @@ onUnmounted(() => {
     padding: 8px 16px 16px;
     border-radius: 8px;
     background-color: var(--o-background-color-secondary-light);
+    display: flex;
+    flex-direction: column;
     :deep(.el-tabs__item) {
       font-size: 14px;
       height: 32px;
@@ -461,8 +457,23 @@ onUnmounted(() => {
     :deep(.el-tab-pane) {
       padding-top: 16px;
     }
-    :deep(.el-tabs), :deep(.el-tabs__content), :deep(.el-tab-pane), .mcp-click, .mcp-cli, .oedp-click, .oedp-cli {
+    :deep(.el-tabs) {
       height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+    :deep(.el-tabs__content) {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    :deep(.el-tab-pane) {
+      height: auto;
+      min-height: 100%;
+    }
+    .mcp-click, .mcp-cli, .oedp-click, .oedp-cli {
+      height: auto;
+      min-height: 100%;
     }
   }
 }
@@ -483,9 +494,33 @@ onUnmounted(() => {
   }
   code {
     font-family: monospace;
+    /* 确保代码块也能正确换行 */
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
   }
+  /* 处理表格溢出 */
+  table {
+    width: 100%;
+    table-layout: fixed;
+    word-wrap: break-word;
+  }
+  /* 处理预格式化文本 */
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-x: auto;
+  }
+  /* 处理长URL链接 */
   a {
     color: var(--o-theme-color-primary-blue);
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  /* 处理图片溢出 */
+  img {
+    max-width: 100%;
+    height: auto;
   }
 }
 </style>

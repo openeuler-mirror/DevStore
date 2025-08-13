@@ -186,6 +186,8 @@ onMounted(async () => {
 <style lang="scss">
 .cm-editor {
   outline: none !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', Courier, monospace !important;
+  background-color: var(--o-background-color-light-blue) !important;
   .cm-gutters {
     background-color: var(--o-background-color-tertiary-light);
     div {
@@ -193,12 +195,36 @@ onMounted(async () => {
     }
   }
   .cm-content {
+    font-size: 12px !important;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', Courier, monospace !important;
+    background-color: var(--o-background-color-light-blue) !important;
     div, span {
       color: var(--o-text-color-primary);
+      font-size: 12px !important;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', Courier, monospace !important;
+    }
+    .cm-line {
+      font-size: 12px !important;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', Courier, monospace !important;
     }
   }
+  .cm-scroller {
+    background-color: var(--o-background-color-light-blue) !important;
+  }
+  .cm-activeLine {
+    background-color: var(--o-background-color-active-line-blue) !important;
+  }
+  .cm-focused .cm-activeLine {
+    background-color: var(--o-background-color-active-line-blue) !important;
+  }
+  .cm-selectionBackground, .cm-content ::selection {
+    background-color: var(--o-background-color-selection-blue) !important;
+  }
+  .cm-focused .cm-selectionBackground {
+    background-color: var(--o-background-color-selection-blue) !important;
+  }
   div, span {
-    font-family: monospace;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', Courier, monospace !important;
   }
 }
 
