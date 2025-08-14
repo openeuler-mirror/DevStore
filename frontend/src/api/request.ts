@@ -13,12 +13,13 @@
 import axios from 'axios';
 import type { AxiosResponse } from 'axios';
 import i18n from '@/lang/i18n';
-import {FALL_BACK_LANG} from '@/lang';
+import { FALL_BACK_LANG } from '@/lang';
+import { unref } from 'vue';
 
 const {t} = i18n.global;
 
 function i18nDataConverter(data: unknown): void {
-  const lang = i18n.global.locale.value;
+  const lang = unref(i18n.global.locale);
   function valJudge(o: Record<string, unknown>, k: string, val: unknown): void {
     if (typeof val === 'object' && val !== null) {
       if (

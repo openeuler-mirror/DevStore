@@ -123,7 +123,7 @@ def init_log(file_name):
     # 日志文件权限
     file_mod = 0o600
     # 日志备份数
-    backup_count = 2
+    backup_count = 10
     # 日志级别
     log_level = "INFO"
     # 日志输出格式

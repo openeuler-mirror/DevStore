@@ -17,7 +17,7 @@ import yaml
 from django.db import connection
 from tasks.models import Task
 from artifacts.serializers import PluginItemSerializer
-from constants.paths import PLUGIN_CACHE_DIR
+from constants.paths import PLUGIN_CACHE_DIR, LOG_DIR
 from utils.common import is_process_running
 from utils.logger import init_log
 
@@ -99,3 +99,37 @@ def update_plugin_status(plugin, status):
         logger.error(f"Failed to update plugin [{plugin.name}] status: {str(e)}")
         return False
     return True
+
+def get_devstore_log():
+    """获取 DevStore 日志
+    
+    如果日志文件超过100KB，则只返回最后100KB的内容
+    """
+    log_file = os.path.join(LOG_DIR, "run.log")
+    if not os.path.exists(log_file):
+        return ""
+    
+    try:
+        max_size = 100 * 1024  # 定义100KB的大小限制
+        file_size = os.path.getsize(log_file)
+        with open(log_file, 'r', encoding='utf-8') as f:
+            if file_size <= max_size:
+                return f.read()
+            else:
+                # 文件大于100KB，读取最后100KB
+                f.seek(file_size - max_size)
+                content = f.read()
+                # 由于可能从字符中间开始读取，找到第一个完整的行
+                lines = content.split('\n')
+                if len(lines) > 1:
+                    # 去掉第一行（可能不完整），从第二行开始
+                    return '\n'.join(lines[1:])
+                else:
+                    return content
+                    
+    except (OSError, IOError, UnicodeDecodeError) as e:
+        logger.error(f"Failed to read log file {log_file}: {str(e)}")
+        return f"读取日志文件时发生错误: {str(e)}"
+    except Exception as e:
+        logger.error(f"Unexpected error while reading log file {log_file}: {str(e)}")
+        return f"读取日志文件时发生未知错误: {str(e)}"
