@@ -24,7 +24,7 @@ class InstallMCPTask(BaseTask):
         self.pkg_name = pkg_name
 
     def run(self):
-        cmd = ['yum', 'install', '-y', self.pkg_name]
+        cmd = ['dnf', 'install', '-y', self.pkg_name]
         cmd_executor = CommandExecutor(cmd)
         _, stderr, code = cmd_executor.run()
         if code != 0:

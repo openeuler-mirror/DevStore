@@ -14,6 +14,7 @@
 
 import os
 
+
 # 配置文件目录
 CONFIG_DIR = '/etc/dev-store'
 # /etc/dev-store/mariadb/mariadb.conf MariaDB 配置文件路径
@@ -30,10 +31,11 @@ LOG_DIR = '/var/log/dev-store'
 PLUGIN_REPO_DIR = '/etc/oedp/config/repo/cache'
 # /etc/oedp/config/repo/details OEDP 插件配置信息缓存目录
 REPO_DETAILS_DIR = '/var/oedp/details'
-# MCP 服务 repo 文件
-MCP_REPO_FILE = '/etc/yum.repos.d/mcp.repo'
+# MCP 服务缓存地址
+CACHE_DIR = "/var/dev-store/mcp-assets"
+# MCP 服务包存储地址
+MCP_BASE_DIR ="/var/dev-store/mcp-save"
 # 家目录
 HOME_DIR = os.path.expanduser('~')
 # 插件包缓存目录
 PLUGIN_CACHE_DIR = os.path.join(HOME_DIR, '.oedp')
-
