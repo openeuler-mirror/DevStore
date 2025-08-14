@@ -51,7 +51,7 @@ export interface ServerAndPluginInfoObj {
   app_list?: string[];
   action_list?: string[];
   cmd_list: string[];
-  mcp_json?: string;
+  mcp_config?: string;
   config_yaml?: string;
 }
 

@@ -102,14 +102,15 @@ const copyToClipboard = async () => {
     }
     .cmd-config {
       position: relative;
-      line-height: 20px;
+      line-height: 16px;
       max-height: 100%;
       white-space: pre;
       background: var(--o-background-color-tertiary-light);
       border-radius: 4px;
       font-weight: 400;
-      padding: 16px;
-      font-family: monospace;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', Courier, monospace;
+      font-size: 12px;
       overflow: auto;
       .copy-icon {
         width: 20px;

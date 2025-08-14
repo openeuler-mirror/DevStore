@@ -194,7 +194,9 @@ watch(() => props.modelValue, (newValue) => {
     overflow: hidden; /* 确保外层没有滚动条 */
     
     .log-content {
-      font-family: monospace;
+      font-family: 'Fira Code', 'JetBrains Mono', 'Source Code Pro', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Liberation Mono', monospace;
+      font-size: 12px;
+      line-height: 1.0;
       border: 1px solid #dcdfe6;
       padding: 12px;
       background-color: #f5f7fa;

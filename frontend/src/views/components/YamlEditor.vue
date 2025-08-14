@@ -229,9 +229,37 @@ onMounted(async () => {
 }
 
 .editor-dialog-unscoped {
+  z-index: 3000 !important;
   .el-dialog__header {
     justify-content: flex-end !important;
   }
+}
+
+.editor-dialog-unscoped .el-dialog {
+  z-index: 3000 !important;
+}
+
+.editor-dialog-unscoped .el-overlay {
+  z-index: 2999 !important;
+}
+
+/* 确保在全屏编辑器打开时，tabs 组件的 z-index 较低 */
+body:has(.editor-dialog-unscoped) .el-tabs__nav {
+  z-index: 1 !important;
+}
+
+body:has(.editor-dialog-unscoped) .el-tabs__nav.is-top {
+  z-index: 1 !important;
+}
+
+/* 直接覆盖所有可能的 tabs 相关元素 */
+.el-tabs__nav, .el-tabs__nav.is-top {
+  z-index: auto !important;
+}
+
+/* 当编辑器打开时确保 dialog 在最前面 */
+.el-dialog__wrapper {
+  z-index: 3001 !important;
 }
 
 .tip-dialog-unscoped {

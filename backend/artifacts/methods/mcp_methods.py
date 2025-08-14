@@ -130,14 +130,123 @@ class MCPMethods:
         return packages
 
     @staticmethod
-    def _parse_all_primary_xml() -> List[Dict[str, Any]]:
-        """从所有repodata解析MCP包"""
-        matches = glob.glob("/var/cache/dnf/*/repodata/*-primary.xml.*")
-        if not matches:
-            logger.error("No primary.xml files found in any repodata")
+    def _get_valid_repo_cache_dirs() -> List[str]:
+        """获取当前启用的repo的有效缓存目录"""
+        try:
+            enabled_repos = MCPMethods._get_enabled_repos()
+            if not enabled_repos:
+                return []
+            
+            logger.info(f"Found enabled repos: {enabled_repos}")
+            
+            valid_dirs = []
+            for repo_id in enabled_repos:
+                cache_dir = MCPMethods._find_latest_repo_cache(repo_id, enabled_repos)
+                if cache_dir:
+                    valid_dirs.append(cache_dir)
+            
+            logger.info(f"Total valid repo cache directories: {len(valid_dirs)}")
+            return valid_dirs
+            
+        except Exception as e:
+            logger.error(f"Failed to get valid repo cache dirs: {e}")
             return []
 
-        logger.info(f"Found {len(matches)} repodata files to scan")
+    @staticmethod
+    def _get_enabled_repos() -> List[str]:
+        """获取启用的repo列表"""
+        cmd_executor = CommandExecutor(['dnf', 'repolist', '--enabled', '--quiet'], timeout=30)
+        stdout, stderr, returncode = cmd_executor.run()
+        
+        if returncode != 0:
+            logger.error(f"Failed to get enabled repos: {stderr}")
+            return []
+        
+        enabled_repos = []
+        lines = stdout.strip().split('\n')
+        for line in lines[1:]:  # 跳过标题行
+            if line.strip():
+                repo_id = line.split()[0]  # 第一列是repo ID
+                enabled_repos.append(repo_id)
+        
+        return enabled_repos
+
+    @staticmethod
+    def _find_latest_repo_cache(repo_id: str, enabled_repos: List[str]) -> str:
+        """为指定repo找到最新的有效缓存目录"""
+        cache_base = "/var/cache/dnf"
+        pattern = f"{repo_id}-*"
+        matching_paths = glob.glob(os.path.join(cache_base, pattern))
+        
+        # 过滤出有效的缓存目录
+        matching_dirs = []
+        for path in matching_paths:
+            if MCPMethods._is_valid_repo_cache_dir(path, repo_id, enabled_repos):
+                matching_dirs.append(path)
+        
+        if not matching_dirs:
+            logger.warning(f"No cache directory found for enabled repo: {repo_id}")
+            return ""
+        
+        # 选择最新修改的目录
+        latest_dir = max(matching_dirs, key=lambda d: os.path.getmtime(d))
+        
+        # 验证repodata目录存在
+        repodata_dir = os.path.join(latest_dir, "repodata")
+        if not os.path.exists(repodata_dir):
+            logger.warning(f"Repodata directory not found for repo '{repo_id}': {repodata_dir}")
+            return ""
+        
+        logger.info(f"Found valid cache for repo '{repo_id}': {latest_dir}")
+        return latest_dir
+
+    @staticmethod
+    def _is_valid_repo_cache_dir(path: str, repo_id: str, enabled_repos: List[str]) -> bool:
+        """检查目录是否是指定repo的有效缓存目录"""
+        if not os.path.isdir(path):
+            return False
+        
+        dir_name = os.path.basename(path)
+        
+        # 必须以 "repo_id-" 开头
+        if not dir_name.startswith(repo_id + '-'):
+            return False
+        
+        # 提取hash部分
+        suffix = dir_name[len(repo_id) + 1:]
+        if not suffix:  # hash部分不能为空
+            return False
+        
+        # repo缓存目录的hash通常是长的字母数字字符串，不包含有意义的单词
+        if '-' in suffix:
+            # 如果suffix包含连字符，检查第一部分的特征
+            first_part = suffix.split('-')[0]
+            # hash的第一部分通常较长(>=6字符)且包含数字和字母随机混合
+            if len(first_part) < 6 or first_part.isalpha():
+                return False
+        
+        return True
+
+    @staticmethod
+    def _parse_all_primary_xml() -> List[Dict[str, Any]]:
+        """从有效的repodata解析MCP包"""
+        # 获取有效的repo缓存目录
+        valid_repo_dirs = MCPMethods._get_valid_repo_cache_dirs()
+        if not valid_repo_dirs:
+            logger.error("No valid repo cache directories found")
+            return []
+
+        # 在有效的repo目录中查找primary.xml文件
+        matches = []
+        for repo_dir in valid_repo_dirs:
+            repo_matches = glob.glob(f"{repo_dir}/repodata/*-primary.xml.*")
+            matches.extend(repo_matches)
+            
+        if not matches:
+            logger.error("No primary.xml files found in valid repodata")
+            return []
+
+        logger.info(f"Found {len(matches)} valid repodata files to scan from {len(valid_repo_dirs)} enabled repos")
 
         all_packages = {}
         for xml_file in matches:
@@ -154,7 +263,7 @@ class MCPMethods:
         for pkg_versions in all_packages.values():
             final_packages.extend(pkg_versions.values())
     
-        logger.info(f"Found {len(final_packages)} packages across all repodata")
+        logger.info(f"Found {len(final_packages)} packages across valid repodata")
         return final_packages
 
     @staticmethod

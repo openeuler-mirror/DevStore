@@ -114,13 +114,14 @@ onMounted(async () => {
 <style lang="scss" scoped>
 .app-container {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
-  background-color: rgba(245, 246, 249, 1);
   background-image: url("@/assets/img/background.svg");
-  background-size: 100%;
+  background-size: 100% auto;
   background-repeat: no-repeat;
+  background-position: center top;
+  background-attachment: fixed;
 
   .layout {
     padding: 0 24px;
