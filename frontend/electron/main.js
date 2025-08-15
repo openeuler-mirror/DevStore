@@ -53,11 +53,11 @@ function createWindow() {
       `)
     })
 
-    win.webContents.on('did-fail-load', (event, errorCode, errorDesc) => {
+    win.webContents.on('did-fail-load', (_event, _errorCode, errorDesc) => {
       console.error('Failed to load page:', errorDesc)
     })
 
-    win.webContents.session.webRequest.onBeforeRequest((details, callback) => {
+    win.webContents.session.webRequest.onBeforeRequest((_details, callback) => {
       callback({ cancel: false })
     })
   } else {

@@ -60,7 +60,7 @@
             <div v-else-if="searchValue !== '' && activeTab === tab.name" class="label-sum">{{ count }}</div>
           </template>
           <!-- 子组件：卡片列表 -->
-          <grid-display :tag="tab.name" :item-list="itemList" />
+          <grid-display :tag="tab.name as Tag" :item-list="itemList" />
         </el-tab-pane>
       </el-tabs>
       <!-- 分页 -->
@@ -73,13 +73,14 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch, onMounted, onUnmounted, computed } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { throttle } from 'underscore';
 import GridDisplay from '@/views/components/GridDisplay.vue';
 import { queryList, Tag, type QueryListResponse } from '@/api/index.ts';
 import { eventBus, EVENT_TYPES } from '@/utils/eventBus';
+import { updateRouteQuery } from '@/utils/index';
 
 const route = useRoute();
 const router = useRouter();
@@ -88,10 +89,10 @@ const {t} = useI18n();
 // 从路由获取当前 tag
 const tag = computed(() => route.query.tag ?? 'mcp');
 
-// 搜索框里显示的值
-const searchInput = ref('');
-// 查询时实际使用的搜索值
-const searchValue = ref('');
+// 搜索框里显示的值 - 从URL参数初始化
+const searchInput = ref((route.query.searchValue as string) || '');
+// 查询时实际使用的搜索值 - 从URL参数初始化
+const searchValue = ref((route.query.searchValue as string) || '');
 // 搜索结果个数
 const count = ref<number>(0);
 
@@ -101,11 +102,11 @@ const oedpCount = ref<number>(0);
 
 // 查询首页列表信息
 const itemList = ref();
-// 分页
-const currentPage = ref(1);
-const pageSize = ref(10);
-// 右侧 tab
-const activeSortTab = ref('rec');
+// 分页 - 从URL参数初始化
+const currentPage = ref(parseInt(route.query.curPage as string) || 1);
+const pageSize = ref(parseInt(route.query.pageSize as string) || 10);
+// 右侧 tab - 从URL参数初始化
+const activeSortTab = ref((route.query.sort as string) || 'rec');
 const getList = async () => {
   try {
     const res: QueryListResponse = await queryList({
@@ -131,11 +132,20 @@ const getList = async () => {
 const handleSizeChange = async (val: number) => {
   currentPage.value = 1;
   pageSize.value = val;
+  // 更新URL参数
+  await updateRouteQuery(router, route, {
+    pageSize: val,
+    curPage: 1
+  });
   await getList();
 };
 // 改变当前页码
 const handleCurrentChange = async (val: number) => {
   currentPage.value = val;
+  // 更新URL参数
+  await updateRouteQuery(router, route, {
+    curPage: val
+  });
   await getList();
 };
 
@@ -144,6 +154,12 @@ const handleSearch = async () => {
   searchInput.value.trim();
   if (searchInput.value !== '') {
     searchValue.value = searchInput.value;
+    currentPage.value = 1; // 搜索时重置到第一页
+    // 更新URL参数
+    await updateRouteQuery(router, route, {
+      searchValue: searchInput.value,
+      curPage: 1
+    });
     await getList();
   }
 };
@@ -154,6 +170,12 @@ const throttledSearch = throttle(handleSearch, 1000);
 // 仅在 有搜索值 时，重置才重新查询
 const handleClear = async () => {
   if (searchInput.value.trim() !== '') {
+    searchValue.value = '';
+    searchInput.value = '';
+    // 更新URL参数
+    await updateRouteQuery(router, route, {
+      searchValue: ''
+    });
     await getList();
   }
   searchInput.value = '';
@@ -169,11 +191,9 @@ const tabs = computed(() => [
 const handleTabChange = async (tabName: Tag) => {
   currentPage.value = 1;
   // 更新 URL 参数（保留其他已有参数）
-  await router.push({
-    query: {
-      ...route.query,
-      tag: tabName
-    }
+  await updateRouteQuery(router, route, {
+    tag: tabName as string,
+    curPage: 1
   });
   await getList();
 };
@@ -185,6 +205,10 @@ const sortTabs = [
 ];
 // 切换右侧 tab 时，重新查询
 const handleSortTabChange = async () => {
+  // 更新URL参数
+  await updateRouteQuery(router, route, {
+    sort: activeSortTab.value
+  });
   await getList();
 };
 
@@ -205,7 +229,7 @@ watch(
 );
 
 // 轮询
-let intervalId: number | null = null;
+let intervalId: NodeJS.Timeout | null = null;
 const getAndCheck = async () => {
   await getList();
   // 判断停止轮询的逻辑加在这里
@@ -219,10 +243,35 @@ const handleSyncSuccess = async () => {
 
 // 轮询时机
 onMounted(async () => {
-  // 检查 url 中是否存在 tag，不存在就默认设置 tag 为 mcp
-  if (!route.query.tag) {
-    router.replace({ query: { ...route.query, tag: 'mcp' } });
+  // 检查并设置所有必要的URL参数
+  const currentQuery = { ...route.query };
+  let needsUpdate = false;
+
+  if (!currentQuery.tag) {
+    currentQuery.tag = 'mcp';
+    needsUpdate = true;
   }
+  if (!currentQuery.pageSize) {
+    currentQuery.pageSize = pageSize.value.toString();
+    needsUpdate = true;
+  }
+  if (!currentQuery.curPage) {
+    currentQuery.curPage = currentPage.value.toString();
+    needsUpdate = true;
+  }
+  if (!currentQuery.sort) {
+    currentQuery.sort = activeSortTab.value;
+    needsUpdate = true;
+  }
+  if (!currentQuery.searchValue) {
+    currentQuery.searchValue = searchValue.value;
+    needsUpdate = true;
+  }
+
+  if (needsUpdate) {
+    router.replace({ query: currentQuery });
+  }
+  
   // 立即执行一次
   await getAndCheck();
 
@@ -235,6 +284,23 @@ onMounted(async () => {
   eventBus.on(EVENT_TYPES.SYNC_SUCCESS, handleSyncSuccess);
 });
 
+// 保存当前页面状态到sessionStorage
+const savePageState = () => {
+  const state = {
+    pageSize: pageSize.value,
+    curPage: currentPage.value,
+    searchValue: searchValue.value,
+    sort: activeSortTab.value,
+    tag: tag.value
+  };
+  sessionStorage.setItem('homePageState', JSON.stringify(state));
+};
+
+// 在状态变化时保存
+watch([pageSize, currentPage, searchValue, activeSortTab, tag], () => {
+  savePageState();
+});
+
 // 页面卸载时清除定时器和事件监听器
 onUnmounted(() => {
   if (intervalId) {
@@ -242,6 +308,13 @@ onUnmounted(() => {
   }
   // 移除事件监听器
   eventBus.off(EVENT_TYPES.SYNC_SUCCESS, handleSyncSuccess);
+  // 保存状态
+  savePageState();
+});
+
+// 页面离开前保存状态
+onBeforeUnmount(() => {
+  savePageState();
 });
 </script>
 
@@ -267,7 +340,7 @@ onUnmounted(() => {
       .server-num, .plugin-num {
         height: 32px;
         font-size: 24px;
-        font-width: 600;
+        font-weight: 600;
         line-height: 32px;
         margin-left: 8px;
         padding: 0 12px;
