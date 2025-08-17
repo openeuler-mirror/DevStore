@@ -14,6 +14,7 @@
 
 import os
 import re
+import json
 
 from rest_framework import serializers
 
@@ -92,6 +93,7 @@ class MCPDetailSerializer(serializers.ModelSerializer):
     tag = serializers.SerializerMethodField()
     installed_status = serializers.SerializerMethodField()
     cmd_list = serializers.SerializerMethodField()
+    app_list = serializers.SerializerMethodField()
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
     
     class Meta:
@@ -112,6 +114,7 @@ class MCPDetailSerializer(serializers.ModelSerializer):
             'cmd_list',
             'mcp_config',
             'installed_status',
+            'app_list',
         )
 
     @staticmethod
@@ -129,6 +132,18 @@ class MCPDetailSerializer(serializers.ModelSerializer):
             return Task.Status.NOT_YET
         return Task.Status.SUCCESS
     
+    @staticmethod
+    def get_app_list(obj):
+        cmd = ["/var/lib/dev-store/src/mcp_manage.sh", "mcp-status", obj.package_name]
+        executor = CommandExecutor(cmd, timeout=30)
+        stdout, _, returncode = executor.run()
+        if returncode == 0:  # 成功执行
+            stdout = stdout.strip() if stdout else ""
+            app_status_list = json.loads(stdout)
+            return app_status_list
+        else:  
+            return []
+        
     @staticmethod
     def get_cmd_list(obj):
         cmd_list = [

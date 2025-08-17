@@ -31,6 +31,6 @@ cp -rf configs/* /etc/dev-store
 rm -rf /var/lib/dev-store/*
 [ ! -d /var/lib/dev-store/src ] && mkdir -p /var/lib/dev-store/src
 rm -rf /var/lib/dev-store/src/*
-cp -rf artifacts tasks constants dev_store utils manage.py /var/lib/dev-store/src
+cp -rf artifacts tasks constants dev_store utils manage.py mcp_manage.sh /var/lib/dev-store/src
 cp -rf services /var/lib/dev-store
 echo "success $(date "+%Y-%m-%d %H:%M:%S")"
