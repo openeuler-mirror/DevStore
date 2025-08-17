@@ -99,12 +99,12 @@ import {
   queryDetail,
   getPackage,
   deletePackage,
-  addAgent,
-  deleteAgent,
+  mcpAgent,
   ServerAndPluginInfoObj,
   Tag,
 } from '@/api/index.ts';
 import { generateIconBgColor } from '@/utils/index.ts';
+import { createStatusWatcher } from '@/utils/statusWatcher';
 
 import McpQuick from '@/views/components/McpQuick.vue';
 import McpCli from '@/views/components/McpCli.vue';
@@ -117,7 +117,7 @@ const router = useRouter();
 const {t} = useI18n();
 
 const tag = ref<Tag>(route.name === 'McpServerDetail' ? 'mcp' : 'oedp');
-const key = ref<string>(route.params.key);
+const key = ref<string>(Array.isArray(route.params.key) ? route.params.key[0] : route.params.key || '');
 
 // 是否支持 OEDP 快捷部署
 const supportOedpQuick = ref<boolean>(false);
@@ -179,7 +179,7 @@ watch(tabs, (newTabs) => {
 // markdown
 const compiledMarkdown = ref('');
 // 当前页面承接信息的变量
-const itemDetail = ref<ServerAndPluginInfoObj>({});
+const itemDetail = ref<Partial<ServerAndPluginInfoObj>>({});
 // 提示 message 持续时间
 const MESSAGE_DURATION = 3000;
 
@@ -233,9 +233,13 @@ const uninstallPackage = async () => {
 };
 
 // 添加到智能体应用
-const addApp = async (name: string) => {
+const addApp = async (appName: string) => {
   try {
-    const res = await addAgent({ tag: tag.value, key: key.value, agent: name });
+    const res = await mcpAgent({ 
+      action: 'add', 
+      package_name: itemDetail.value.package_name || '', 
+      app_name: appName 
+    });
     if (res && res.is_success) {
       await getDetail();
     } else if (res) {
@@ -247,9 +251,13 @@ const addApp = async (name: string) => {
 };
 
 // 删除智能体应用
-const deleteApp = async (name: string) => {
+const deleteApp = async (appName: string) => {
   try {
-    const res = await deleteAgent({ tag: tag.value, key: key.value, agent: name });
+    const res = await mcpAgent({ 
+      action: 'delete', 
+      package_name: itemDetail.value.package_name || '', 
+      app_name: appName 
+    });
     if (res && res.is_success) {
       await getDetail();
     } else if (res) {
@@ -274,34 +282,27 @@ onMounted(async () => {
 });
 
 // 监听 download_status 变化
-watch(
+createStatusWatcher(
   () => itemDetail.value.download_status,
-  (newVal, oldVal) => {
-    if (newVal !== oldVal && typeof oldVal !== 'undefined') {
-      if ((oldVal === 'not yet' || oldVal === 'in process') && newVal === 'success') {
-        // 下载成功
-        ElMessage.success({
-          message: t('message.downloadSuc'),
-          duration: MESSAGE_DURATION,
-          showClose: true,
-        });
-      } else if (oldVal === 'success' && newVal === 'not yet') {
-        // 删除成功
-        ElMessage.success({
-          message: t('message.deleteSuc'),
-          duration: MESSAGE_DURATION,
-          showClose: true,
-        });
-      } else if ((oldVal === 'not yet' || oldVal === 'in process') && newVal === 'fail') {
-        // 下载失败
-        ElMessage.warning({
-          message: t('message.downloadFail'),
-          duration: MESSAGE_DURATION,
-          showClose: true,
-        });
-      }
-    }
-  }
+  {
+    successMessage: 'message.downloadSuc',
+    removeMessage: 'message.deleteSuc', 
+    failMessage: 'message.downloadFail'
+  },
+  t,
+  { duration: MESSAGE_DURATION, showClose: true }
+);
+
+// 监听 installed_status 变化
+createStatusWatcher(
+  () => itemDetail.value.installed_status,
+  {
+    successMessage: 'message.installSuc',
+    removeMessage: 'message.uninstallSuc',
+    failMessage: 'message.installFail'
+  },
+  t,
+  { duration: MESSAGE_DURATION, showClose: true }
 );
 
 // 监听 action_list 中任意项的 status 变化
@@ -312,14 +313,16 @@ watch(
       if (status !== oldVal[index] && typeof oldVal[index] !== 'undefined') {
         if ((oldVal[index] === 'not yet' || oldVal[index] === 'in process') && status === 'success') {
           // 执行成功
-          ElMessage.success({
+          ElMessage({
+            type: 'success',
             message: t('message.executeSuc'),
             duration: MESSAGE_DURATION,
             showClose: true,
           });
         } else if ((oldVal[index] === 'not yet' || oldVal[index] === 'in process') && status === 'fail') {
           // 执行失败
-          ElMessage.warning({
+          ElMessage({
+            type: 'warning',
             message: t('message.executeFail'),
             duration: MESSAGE_DURATION,
             showClose: true,

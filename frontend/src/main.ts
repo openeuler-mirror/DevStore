@@ -17,6 +17,7 @@ import router from './router';
 import '@/assets/style/normalize.css';
 import '@/assets/style/reset.scss';
 import '@/assets/style/variable.scss';
+import 'element-plus/es/components/message/style/css';
 
 const app = createApp(App);
 app.use(router);

@@ -51,3 +51,6 @@ export async function updateRouteQuery(
   
   await router.push({ query: newQuery });
 }
+
+// 导出语言检测相关函数
+export { detectSystemLanguage, getSystemLanguages, isChineseLanguage } from './languageDetection';

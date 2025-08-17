@@ -7,7 +7,7 @@ CALL_USER=$(logname 2>/dev/null || echo $SUDO_USER || echo $USER)
 CALL_USER_HOME=$(getent passwd "$CALL_USER" | cut -d: -f6)
 # == 预定义路径 ==
 declare -A APP_CONFIG_PATHS=(
-    ["DeepChat"]="$CALL_USER_HOME/.config/DeepChat/mcp_settings.json"
+    ["DeepChat"]="$CALL_USER_HOME/.config/DeepChat/mcp-settings.json"
     ["roo-code"]="$CALL_USER_HOME/.config/VSCodium/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json"
 )
 

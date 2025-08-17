@@ -243,18 +243,19 @@ onMounted(async () => {
   z-index: 2999 !important;
 }
 
-/* 确保在全屏编辑器打开时，tabs 组件的 z-index 较低 */
-body:has(.editor-dialog-unscoped) .el-tabs__nav {
+/* 确保在全屏编辑器打开时，只有当前页面的 tabs 组件的 z-index 较低 */
+body:has(.editor-dialog-unscoped) .detail-deploy .el-tabs__nav {
   z-index: 1 !important;
 }
 
-body:has(.editor-dialog-unscoped) .el-tabs__nav.is-top {
+body:has(.editor-dialog-unscoped) .detail-deploy .el-tabs__nav.is-top {
   z-index: 1 !important;
 }
 
-/* 直接覆盖所有可能的 tabs 相关元素 */
-.el-tabs__nav, .el-tabs__nav.is-top {
-  z-index: auto !important;
+/* 只影响detail页面的tabs，避免影响其他页面 */
+.detail-deploy .el-tabs__nav, 
+.detail-deploy .el-tabs__nav.is-top {
+  z-index: auto;
 }
 
 /* 当编辑器打开时确保 dialog 在最前面 */
