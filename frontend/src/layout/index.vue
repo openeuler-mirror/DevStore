@@ -70,7 +70,8 @@ const handleSync = async () => {
       // 显示更新时间
       updateTime.value = res.time || '';
       // 提示更新成功
-      ElMessage.success({
+      ElMessage({
+        type: 'success',
         message: t('message.syncSuc'),
         duration: MESSAGE_DURATION,
         showClose: true,
@@ -79,7 +80,8 @@ const handleSync = async () => {
       eventBus.emit(EVENT_TYPES.SYNC_SUCCESS);
     } else if (res) {
       // 提示更新失败
-      ElMessage.warning({
+      ElMessage({
+        type: 'warning',
         message: t('message.syncFail'),
         duration: MESSAGE_DURATION,
         showClose: true,
@@ -88,6 +90,13 @@ const handleSync = async () => {
     }
   } catch (e) {
     console.error('sync', e);
+    // 添加异常情况的消息提示
+    ElMessage({
+      type: 'error',
+      message: '同步过程中出现错误',
+      duration: MESSAGE_DURATION,
+      showClose: true,
+    });
   }
 };
 

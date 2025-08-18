@@ -46,7 +46,7 @@ export interface ServerAndPluginInfoObj {
   author: string;
   readme: string;
   tag: string;
-  installed_status?: 'not yet' | 'in process' | 'success';
+  installed_status?: 'not yet' | 'in process' | 'success' | 'fail';
   download_status?: 'not yet' | 'in process' | 'success' | 'fail';
   app_list?: string[];
   action_list?: string[];
@@ -125,20 +125,11 @@ export function deletePackage(params: { tag: Tag; key: string }) {
   });
 }
 
-// hl: wip 添加智能体应用
-export function addAgent(params: { tag: Tag; key: string; agent: string }) {
+// hl: wip 智能体应用管理
+export function mcpAgent(params: { action: 'add' | 'delete'; package_name: string; app_name: string }) {
   return httpRequest({
-    url: `${prefix}artifacts/agent/`,
+    url: `${prefix}artifacts/mcp_config_manage/`,
     method: 'post',
-    params,
-  });
-}
-
-// hl: wip 删除智能体应用
-export function deleteAgent(params: { tag: Tag; key: string; agent: string }) {
-  return httpRequest({
-    url: `${prefix}artifacts/agent/`,
-    method: 'delete',
     params,
   });
 }

@@ -12,11 +12,15 @@
 
 import { createI18n } from 'vue-i18n'; //引入vue-i18n组件
 import messages from './index';
+import { detectSystemLanguage } from '@/utils/languageDetection';
+
+// 检测系统语言
+const systemLanguage = detectSystemLanguage();
 
 const i18n = createI18n({
   fallbackLocale: 'en',//预设语言环境
   globalInjection: true,
-  locale: 'zh', // 默认显示的语言
+  locale: systemLanguage, // 根据系统语言自动设置
   messages // 本地化的语言环境信息
 });
 
