@@ -106,6 +106,8 @@ const sync = async () => {
     const res: SyncResponse = await syncData();
     if (res && res.is_success) {
       updateTime.value = res.time || '';
+      // 发送同步成功事件，触发Home页面立即刷新
+      eventBus.emit(EVENT_TYPES.SYNC_SUCCESS);
     } else if (res) {
       console.log(res.message);
     }
