@@ -24,6 +24,7 @@ Requires:       python3-Django
 Requires:       python3-pyyaml
 Requires:       python3-psutil
 Requires:       python3-zstandard
+Requires:       systemd
 
 # 构建依赖
 BuildRequires:  rpm-build
@@ -56,6 +57,7 @@ mkdir -p %{buildroot}/usr/share/icons/hicolor/64x64/apps
 mkdir -p %{buildroot}/usr/share/icons/hicolor/48x48/apps
 mkdir -p %{buildroot}/usr/share/icons/hicolor/32x32/apps
 mkdir -p %{buildroot}/usr/share/icons/hicolor/16x16/apps
+mkdir -p %{buildroot}/usr/lib/systemd/system
 
 # 安装前端应用文件
 cp -rf opt/dev-store/app/* %{buildroot}/opt/dev-store/app/
@@ -80,6 +82,9 @@ cp -f usr/share/icons/hicolor/64x64/apps/dev-store.png %{buildroot}/usr/share/ic
 cp -f usr/share/icons/hicolor/48x48/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/
 cp -f usr/share/icons/hicolor/32x32/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/32x32/apps/
 cp -f usr/share/icons/hicolor/16x16/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/16x16/apps/
+
+# 安装systemd服务文件
+cp -f usr/lib/systemd/system/dev-store.service %{buildroot}/usr/lib/systemd/system/
 
 # 设置文件权限
 chmod 755 %{buildroot}/opt/dev-store/app/dev-store-app
@@ -146,6 +151,9 @@ find %{buildroot}/var/lib/dev-store/src -name "*.sh" -exec chmod 755 {} \;
 %attr(644,root,root) /usr/share/icons/hicolor/32x32/apps/dev-store.png
 %attr(644,root,root) /usr/share/icons/hicolor/16x16/apps/dev-store.png
 
+# systemd服务文件
+%attr(644,root,root) /usr/lib/systemd/system/dev-store.service
+
 %post
 # 安装后脚本
 # 创建必要的目录和设置权限
@@ -168,13 +176,33 @@ if command -v gtk-update-icon-cache >/dev/null 2>&1; then
     gtk-update-icon-cache -f -t /usr/share/icons/hicolor
 fi
 
+# 重新加载systemd配置
+systemctl daemon-reload
+
+echo "DevStore服务已安装。"
+echo "使用以下命令管理服务："
+echo "  启用自启动: systemctl enable dev-store"
+echo "  启动服务: systemctl start dev-store"
+echo "  停止服务: systemctl stop dev-store"
+echo "  查看状态: systemctl status dev-store"
+echo "  查看日志: journalctl -u dev-store -f"
+
 %preun
 # 卸载前脚本
-# 停止相关服务（如果有）
+# 停止并禁用dev-store服务
+if [ $1 -eq 0 ]; then
+    # 完全卸载时执行
+    systemctl stop dev-store.service 2>/dev/null || true
+    systemctl disable dev-store.service 2>/dev/null || true
+fi
 
 %postun
 # 卸载后脚本
-# 清理临时文件（如果需要）
+if [ $1 -eq 0 ]; then
+    # 完全卸载时执行
+    systemctl daemon-reload
+    echo "DevStore服务已完全移除。"
+fi
 
 %changelog
 * Mon Jan 27 2025 Huawei Technologies Co., Ltd. <dev@huawei.com> - 1.0.0-1
@@ -182,3 +210,5 @@ fi
 - Includes frontend Electron application
 - Includes backend Django application
 - Provides comprehensive development store management functionality
+- Added systemd service support for easy service management
+- Users can now start/stop DevStore using systemctl commands

@@ -134,6 +134,24 @@ setup_rpmbuild() {
     log_info "RPM构建环境设置完成"
 }
 
+# 从spec文件中获取版本号
+get_version_from_spec() {
+    local spec_file="$BUILD_DIR/dev-store.spec"
+    if [ ! -f "$spec_file" ]; then
+        log_error "未找到spec文件: $spec_file"
+        exit 1
+    fi
+    
+    # 使用grep和sed提取版本号
+    local version=$(grep "^Version:" "$spec_file" | sed 's/Version:\s*//' | tr -d ' ')
+    if [ -z "$version" ]; then
+        log_error "无法从spec文件中提取版本号"
+        exit 1
+    fi
+    
+    echo "$version"
+}
+
 # 获取当前系统架构
 get_system_arch() {
     local arch=$(uname -m)
@@ -261,8 +279,12 @@ create_source_package() {
             ;;
     esac
     
+    # 获取版本号
+    local version=$(get_version_from_spec)
+    log_info "从spec文件中读取的版本号: $version"
+    
     # 创建源码包目录
-    local source_dir="dev-store-1.0.0"
+    local source_dir="dev-store-$version"
     rm -rf "$source_dir"
     mkdir -p "$source_dir"
     
@@ -290,19 +312,37 @@ create_source_package() {
     mkdir -p "$source_dir/usr/share/icons/hicolor/48x48/apps"
     mkdir -p "$source_dir/usr/share/icons/hicolor/32x32/apps"
     mkdir -p "$source_dir/usr/share/icons/hicolor/16x16/apps"
+    mkdir -p "$source_dir/usr/lib/systemd/system"
     
     # 创建启动脚本
     cat > "$source_dir/usr/bin/dev-store" << 'EOF'
 #!/bin/bash
+set -e
+
+# 切换到项目目录
 cd /var/lib/dev-store/src
+
+# 启动服务器
 python3 manage.py runserver 0.0.0.0:28080
 EOF
+
+    # 设置脚本可执行权限
+    chmod +x "$source_dir/usr/bin/dev-store"
+    
+    # 复制systemd服务文件
+    cp "$BUILD_DIR/dev-store.service" "$source_dir/usr/lib/systemd/system/"
     
     # 创建桌面文件
     cat > "$source_dir/usr/share/applications/dev-store.desktop" << 'EOF'
 [Desktop Entry]
 Name=DevStore
-Comment=Development Store Management System
+Name[zh_CN]=开发者商店
+Name[en_US]=DevStore
+Name[en]=DevStore
+Comment=Developer Software Store (including MCP services and OEDP plugins)
+Comment[zh_CN]=面向开发者的软件商店(包括MCP服务、OEDP插件)
+Comment[en_US]=Developer Software Store (including MCP services and OEDP plugins)
+Comment[en]=Developer Software Store (including MCP services and OEDP plugins)
 Exec=/opt/dev-store/app/dev-store-app
 Icon=dev-store
 Type=Application
@@ -330,10 +370,10 @@ EOF
     cp "$PROJECT_ROOT/LICENSE" "$source_dir/" 2>/dev/null || true
     
     # 创建tar.gz源码包
-    tar -czf "dev-store-1.0.0.tar.gz" "$source_dir"
+    tar -czf "dev-store-$version.tar.gz" "$source_dir"
     
     # 移动到RPM构建目录
-    mv "dev-store-1.0.0.tar.gz" "$WORKSPACE_DIR/rpmbuild/SOURCES/"
+    mv "dev-store-$version.tar.gz" "$WORKSPACE_DIR/rpmbuild/SOURCES/"
     
     # 复制spec文件
     cp "dev-store.spec" "$WORKSPACE_DIR/rpmbuild/SPECS/"

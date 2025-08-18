@@ -19,12 +19,17 @@
             class="navbar-menu"
             mode="horizontal">
           <el-menu-item index="1" class="dev-store">DevStore</el-menu-item>
-          <el-menu-item index="2">{{ t('nav.userDoc') }}</el-menu-item>
+          <el-sub-menu index="2">
+            <template #title>{{ t('nav.userDoc') }}</template>
+            <el-menu-item index="2-1"><a href="https://gitee.com/openeuler/DevStore/blob/master/README.md">中文文档</a></el-menu-item>
+            <el-menu-item index="2-2"><a href="https://gitee.com/openeuler/DevStore/blob/master/README.en.md">English Doc</a></el-menu-item>
+          </el-sub-menu>
           <el-menu-item index="3">{{ t('nav.devDoc') }}</el-menu-item>
           <el-sub-menu index="4" class="code-repository">
             <template #title>{{ t('nav.codeRepository') }}</template>
-            <el-menu-item index="4-1"><a href="https://gitee.com/openeuler/mcp-servers">mcp-servers</a></el-menu-item>
-            <el-menu-item index="4-2"><a href="https://gitee.com/openeuler/oeDeploy">oeDeploy</a></el-menu-item>
+            <el-menu-item index="4-1"><a href="https://gitee.com/openeuler/DevStore">DevStore</a></el-menu-item>
+            <el-menu-item index="4-2"><a href="https://gitee.com/openeuler/mcp-servers">mcp-servers</a></el-menu-item>
+            <el-menu-item index="4-3"><a href="https://gitee.com/openeuler/oeDeploy">oeDeploy</a></el-menu-item>
           </el-sub-menu>
           <el-menu-item index="5">{{ t('nav.feedback') }}</el-menu-item>
           <el-menu-item index="6" @click="isLogVisible = true">{{ t('nav.log') }}</el-menu-item>
@@ -57,11 +62,14 @@ import LogDialog from '@/views/components/LogDialog.vue';
 import { syncData, type SyncResponse } from '@/api/index';
 import { eventBus, EVENT_TYPES } from '@/utils/eventBus';
 
-const {t} = useI18n();
+const {t, locale} = useI18n();
 const isLogVisible = ref<boolean>(false);
 const MESSAGE_DURATION = 3000;
 
 const updateTime = ref<string>('2025');
+
+
+
 // 点击右上角同步，更新同步时间
 const handleSync = async () => {
   try {
@@ -191,10 +199,6 @@ onMounted(async () => {
       .sync {
         margin-left: 8px;
       }
-    }
-
-    .main-slot {
-      //flex: 1;
     }
   }
 }

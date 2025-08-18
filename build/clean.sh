@@ -125,7 +125,7 @@ show_help() {
     echo "  --build        仅清理构建目录临时文件"
     echo "  -h, --help     显示此帮助信息"
     echo ""
-    echo "默认行为: 清理构建目录临时文件和RPM构建环境"
+    echo "默认行为: 清理构建目录临时文件"
 }
 
 # 主函数
@@ -151,7 +151,6 @@ main() {
             ;;
         "")
             clean_build_dir
-            clean_rpmbuild
             ;;
         *)
             log_error "未知选项: $1"

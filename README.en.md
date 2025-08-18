@@ -1,36 +1,30 @@
 # DevStore
 
-#### Description
-Developer Tools Quick Installation Platform
+#### Introduction
 
-#### Software Architecture
-Software architecture description
-
-#### Installation
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### Instructions
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-#### Contribution
-
-1.  Fork the repository
-2.  Create Feat_xxx branch
-3.  Commit your code
-4.  Create Pull Request
+DevStore is the default software store for the DevStation platform, providing developers with quick installation capabilities for MCP services and OEDP plugins.
 
 
-#### Gitee Feature
+#### First-time Usage
 
-1.  You can use Readme\_XXX.md to support different languages, such as Readme\_en.md, Readme\_zh.md
-2.  Gitee blog [blog.gitee.com](https://blog.gitee.com)
-3.  Explore open source project [https://gitee.com/explore](https://gitee.com/explore)
-4.  The most valuable open source project [GVP](https://gitee.com/gvp)
-5.  The manual of Gitee [https://gitee.com/help](https://gitee.com/help)
-6.  The most popular members  [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+If you are opening DevStore for the first time and see no components on the interface, you need to perform the following initialization steps.
+
+1. Set the MariaDB root password and dev-store password in the configuration file:
+
+```bash
+sudo vim /etc/dev-store/mariadb/init_mariadb.conf
+```
+
+2. Initialize MariaDB:
+
+```bash
+sh /var/lib/dev-store/services/init_mariadb.sh auto
+```
+
+3. Start the DevStore backend service:
+
+```bash
+systemctl start dev-store && systemctl enable dev-store
+```
+
+4. Click the sync button in the upper right corner of the interface, or restart DevStore. Start experiencing DevStore.
