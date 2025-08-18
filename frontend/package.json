@@ -1,10 +1,10 @@
 {
-  "name": "dev-store",
+  "name": "dev-store-app",
   "version": "1.0.0",
   "description": "DevStore",
   "author": {
-    "name": "openEuler",
-    "email": "youremail@example.com"
+    "name": "dingjiahui",
+    "email": "dingjiahui4@huawei.com"
   },
   "homepage": "https://gitee.com/openeuler/DevStore",
   "private": true,
@@ -25,7 +25,8 @@
         "rpm"
       ],
       "icon": "src/assets/logo.png",
-      "category": "Utility"
+      "category": "Development",
+      "executableName": "dev-store-app"
     }
   },
   "scripts": {
@@ -66,7 +67,7 @@
     "@vue/tsconfig": "^0.7.0",
     "concurrently": "^9.2.0",
     "cross-env": "^7.0.3",
-    "electron": "^37.2.6",
+    "electron": "^37.3.0",
     "electron-builder": "^26.0.12",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",
