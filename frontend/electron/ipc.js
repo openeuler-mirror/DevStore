@@ -14,10 +14,37 @@ const { app, ipcMain } = require('electron')
 const { execSync } = require('child_process')
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
 
 function registerIpcListeners() {
   ipcMain.on('close-app', () => {
     app.quit()
+  })
+
+  // 获取当前系统用户名
+  ipcMain.handle('get-username', () => {
+    try {
+      // 优先使用 os.userInfo() 获取用户信息
+      const userInfo = os.userInfo()
+      return { success: true, username: userInfo.username }
+    } catch (error) {
+      try {
+        // 如果 os.userInfo() 失败，尝试使用环境变量
+        const username = process.env.USER || process.env.USERNAME || process.env.LOGNAME
+        if (username) {
+          return { success: true, username }
+        }
+        // 最后尝试使用 whoami 命令
+        const whoami = execSync('whoami', { encoding: 'utf8' }).trim()
+        return { success: true, username: whoami }
+      } catch (fallbackError) {
+        return { 
+          success: false, 
+          error: fallbackError instanceof Error ? fallbackError.message : 'Unknown error',
+          username: 'unknown'
+        }
+      }
+    }
   })
 
   // 用户管理

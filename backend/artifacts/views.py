@@ -29,7 +29,7 @@ from artifacts.serializers import (
 )
 from artifacts.tasks.install_mcp_task import InstallMCPTask
 from artifacts.utils import get_devstore_log
-from utils.mcp_tools import get_mcp_status_in_apps, manage_mcp_config
+from utils.mcp_tools import manage_mcp_config
 from constants.choices import ArtifactTag
 from tasks.models import Task
 from tasks.scheduler import scheduler, check_scheduler_load
@@ -64,20 +64,6 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         msg = "Sync data successfully."
         logger.info(msg)
         return Response({'is_success': True, 'message': msg, 'time': data_time}, status=status.HTTP_200_OK)
-
-    @action(methods=['POST'], detail=False, url_path='sync-mcp')
-    def sync_mcp_only(self, request):
-        """单独同步MCP服务信息（新增接口）"""
-        logger.info("==== API: [POST] /v1.0/artifacts/sync-mcp/ ====")
-
-        # 只同步MCP服务信息
-        result = MCPMethods.sync_mcps()
-        if not result['is_success']:
-            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        msg = "Sync MCP data successfully."
-        logger.info(msg)
-        return Response({'is_success': True, 'message': msg}, status=status.HTTP_200_OK)
 
 
     @action(methods=['POST'], detail=False)
@@ -133,35 +119,6 @@ class ArtifactViewSet(viewsets.GenericViewSet):
             
         return Response(result, status=status_code)
 
-    @action(methods=['GET'], detail=False)
-    def mcp_apps_status(self, request):
-        """获取MCP在所有智能体应用中的配置状态"""
-        logger.info(f"==== API: [GET] /v1.0/artifacts/mcp_apps_status/ ====")
-        
-        # 获取必需参数
-        package_name = request.query_params.get('package_name')
-        
-        # 参数验证
-        if not package_name:
-            return Response(
-                {'is_success': False, 'message': f"Missing required parameter: package_name"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        logger.info(f"Querying MCP status in apps for: {package_name}")
-        
-        # 调用MCP状态查询方法
-        result = get_mcp_status_in_apps(package_name)
-        
-        # 根据结果设置HTTP状态码
-        status_code = result.get('status_code', status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # 创建响应并添加防缓存头
-        response = Response(result, status=status_code)
-        response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response['Pragma'] = 'no-cache'
-        response['Expires'] = '0'
-        return Response(result, status=status_code)
 
     @action(methods=['POST'], detail=False)
     def mcp_config_manage(self, request):
@@ -172,6 +129,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         action = request.query_params.get('action')
         package_name = request.query_params.get('package_name')
         app_name = request.query_params.get('app_name')
+        user_name = request.query_params.get('user_name')
         
         # 参数验证
         if not action:
@@ -189,11 +147,16 @@ class ArtifactViewSet(viewsets.GenericViewSet):
                 {'is_success': False, 'message': f"Missing required parameter: app_name"}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
+        if not user_name:
+            return Response(
+                {'is_success': False, 'message': f"Missing required parameter: user_name"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
-        logger.info(f"Managing MCP config - action: {action}, mcp: {package_name}, app: {app_name}")
+        logger.info(f"Managing MCP config - action: {action}, mcp: {package_name}, app: {app_name}, user: {user_name}")
         
         # 调用MCP配置管理方法
-        result = manage_mcp_config(action, package_name, app_name)
+        result = manage_mcp_config(action, package_name, app_name, user_name)
         
         # 根据结果设置HTTP状态码
         status_code = result.get('status_code', status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -235,6 +198,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         logger.info(f'==== API: [GET] /v1.0/artifacts/details/ ====')
         key = request.query_params.get('key')
         tag = request.query_params.get('tag')
+        user_name = request.query_params.get('user_name')
         if tag == ArtifactTag.MCP:
             try:
                 mcp_service = MCPServer.objects.get(key=key)
@@ -242,7 +206,7 @@ class ArtifactViewSet(viewsets.GenericViewSet):
                 msg = f"The MCP Server with key [{key}] does not exist."
                 logger.error(msg)
                 return Response({'is_success': False, 'message': msg}, status=status.HTTP_400_BAD_REQUEST)
-            serializer = MCPDetailSerializer(mcp_service)
+            serializer = MCPDetailSerializer(mcp_service, user_name)
         elif tag == ArtifactTag.OEDP:
             try:
                 plugin = OEDPPlugin.objects.get(key=key)

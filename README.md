@@ -18,13 +18,13 @@ sudo vim /etc/dev-store/mariadb/init_mariadb.conf
 2. 初始化 MariaDB：
 
 ```bash
-sh /var/lib/dev-store/services/init_mariadb.sh auto
+sudo sh /var/lib/dev-store/services/init_mariadb.sh auto
 ```
 
 3. 启动 DevStore 后端服务：
 
 ```bash
-systemctl start dev-store && systemctl enable dev-store
+sudo systemctl start dev-store && sudo systemctl enable dev-store
 ```
 
 4. 点击界面右上角的同步按钮，或者重启 DevStore。开始体验 DevStore。

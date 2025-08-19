@@ -1,15 +1,36 @@
 #!/bin/bash
 # mcp_manage.sh - MCP配置管理模块化版本，适合接口调用
 
-# 获取实际调用者用户名（支持 sudo / su 场景）
-CALL_USER=$(logname 2>/dev/null || echo $SUDO_USER || echo $USER)
-# 获取调用者 home 目录
-CALL_USER_HOME=$(getent passwd "$CALL_USER" | cut -d: -f6)
+# 用户变量，通过命令参数设置
+CALL_USER=""
+CALL_USER_HOME=""
+
+# 更新配置路径的函数
+update_config_paths() {
+    APP_CONFIG_PATHS=(
+        ["DeepChat"]="$CALL_USER_HOME/.config/DeepChat/mcp-settings.json"
+        ["roo-code"]="$CALL_USER_HOME/.config/VSCodium/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json"
+    )
+}
+
+# 设置用户和家目录的函数
+set_user_info() {
+    local user="$1"
+    if [[ -z "$user" ]]; then
+        fail "用户名不能为空"
+    fi
+    
+    CALL_USER="$user"
+    # 获取用户 home 目录
+    CALL_USER_HOME=$(getent passwd "$CALL_USER" | cut -d: -f6)
+    if [[ -z "$CALL_USER_HOME" ]]; then
+        fail "无法获取用户 $CALL_USER 的家目录"
+    fi
+    # 更新配置路径
+    update_config_paths
+}
 # == 预定义路径 ==
-declare -A APP_CONFIG_PATHS=(
-    ["DeepChat"]="$CALL_USER_HOME/.config/DeepChat/mcp-settings.json"
-    ["roo-code"]="$CALL_USER_HOME/.config/VSCodium/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json"
-)
+declare -A APP_CONFIG_PATHS
 
 declare -A APP_DISPLAY_NAMES=(
     ["roo-code"]="roo-code"
@@ -61,7 +82,7 @@ get_mcp_server_name_from_config() {
 
 # == 从配置文件中查找真实的服务器名称 ==
 find_real_server_name() {
-    local mcp_name="$1"
+    local package_name="$1"
     local app="$2"
     local user_config
     user_config=$(get_app_config_path "$app")
@@ -73,7 +94,7 @@ find_real_server_name() {
     
     # 通过 find_mcp_config_file 找到配置文件
     local config_file
-    config_file=$(find_mcp_config_file "$mcp_name")
+    config_file=$(find_mcp_config_file "$package_name")
     
     if [[ $? -eq 0 && -f "$config_file" ]]; then
         # 从MCP配置文件中获取真实的服务器名称
@@ -174,13 +195,13 @@ normalize_mcp_config() {
 }
 
 write_config() {
-    local mcp_name="$1"
+    local package_name="$1"
     local app="$2"
     
     local config_file
-    config_file=$(find_mcp_config_file "$mcp_name")
+    config_file=$(find_mcp_config_file "$package_name")
     if [[ $? -ne 0 ]]; then
-        fail "找不到MCP配置文件: $mcp_name"
+        fail "找不到MCP配置文件: $package_name"
     fi
     
     if ! is_app_installed "$app"; then
@@ -206,7 +227,7 @@ write_config() {
 }
 
 delete_config() {
-    local server_name="$1"
+    local package_name="$1"
     local app="$2"
     local user_config
     user_config=$(get_app_config_path "$app")
@@ -217,10 +238,10 @@ delete_config() {
     
     # 使用find_real_server_name查找真实的服务器名称
     local real_server_name
-    real_server_name=$(find_real_server_name "$server_name" "$app")
+    real_server_name=$(find_real_server_name "$package_name" "$app")
     
     if [[ -z "$real_server_name" ]]; then
-        fail "服务器 '$server_name' 不存在"
+        fail "包 '$package_name' 不存在"
     fi
     
     if jq "del(.mcpServers.\"$real_server_name\")" "$user_config" > "$user_config.tmp" 2>/dev/null; then
@@ -233,13 +254,13 @@ delete_config() {
 }
 
 query_mcp_in_all_apps() {
-    local mcp_name="$1"
+    local package_name="$1"
     
     # 查找配置文件
     local config_file
-    config_file=$(find_mcp_config_file "$mcp_name")
+    config_file=$(find_mcp_config_file "$package_name")
     if [[ $? -ne 0 ]]; then
-        json_error "本地找不到MCP: $mcp_name"
+        json_error "本地找不到MCP: $package_name"
         return 1
     fi
 
@@ -252,7 +273,7 @@ query_mcp_in_all_apps() {
 
         if is_app_installed "$app"; then
             local real_server_name
-            real_server_name=$(find_real_server_name "$mcp_name" "$app" 2>/dev/null)
+            real_server_name=$(find_real_server_name "$package_name" "$app" 2>/dev/null)
             
             if [[ $? -eq 0 ]] && [[ -n "$real_server_name" ]]; then
                 mcp_status="added"
@@ -279,21 +300,22 @@ MCP配置管理工具  (模块化接口版)
 用法: $0 <command> [参数]
 
 命令:
-  status <server_name> <app>       - 查询指定服务器在特定应用中的状态
-  add <mcp_name> <app>             - 添加MCP配置到指定应用
-  del <server_name> <app>          - 从指定应用删除MCP配置
-  mcp-status <mcp_name>            - 查询指定MCP在所有应用中的配置状态
-  help                             - 显示帮助
+  add <package_name> <app> <user_name>      - 添加MCP配置到指定应用
+  del <package_name> <app> <user_name>      - 从指定应用删除MCP配置
+  mcp-status <package_name> <user_name>     - 查询指定MCP在所有应用中的配置状态
+  help                                      - 显示帮助
 
 支持的应用:
   roo-code    - Roo Code (基于VSCodium)
   DeepChat    - DeepChat独立应用
 
+参数说明:
+  user_name   - 指定要操作的用户名，用于确定用户配置文件路径
+
 示例:
-  $0 status oeDeploy roo-code      # 查询oeDeploy在Roo Code中的状态
-  $0 add oeDeploy roo-code         # 将oeDeploy添加到Roo Code
-  $0 del mcp-oedp roo-code         # 从Roo Code删除mcp-oedp
-  $0 mcp-status oeDeploy           # 查看oeDeploy在所有应用中的配置状态
+  $0 add oeDeploy roo-code alice           # 将oeDeploy添加到alice用户的Roo Code
+  $0 del oeDeploy roo-code alice           # 从alice用户的Roo Code删除oeDeploy
+  $0 mcp-status oeDeploy alice             # 查看oeDeploy在alice用户的所有应用中的配置状态
 EOF
 }
 
@@ -307,15 +329,18 @@ shift
 
 case "$cmd" in
     add)
-        [[ $# -eq 2 ]] || fail "add 需要2个参数 <mcp_name> <app>"
+        [[ $# -eq 3 ]] || fail "add 需要3个参数 <package_name> <app> <user_name>"
+        set_user_info "$3"
         write_config "$1" "$2"
         ;;
     del)
-        [[ $# -eq 2 ]] || fail "del 需要2个参数 <server_name> <app>"
+        [[ $# -eq 3 ]] || fail "del 需要3个参数 <package_name> <app> <user_name>"
+        set_user_info "$3"
         delete_config "$1" "$2"
         ;;
     mcp-status)
-        [[ $# -eq 1 ]] || fail "mcp-status 需要1个参数 <mcp_name>"
+        [[ $# -eq 2 ]] || fail "mcp-status 需要2个参数 <package_name> <user_name>"
+        set_user_info "$2"
         query_mcp_in_all_apps "$1"
         ;;
     help|*)

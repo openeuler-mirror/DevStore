@@ -103,7 +103,7 @@ import {
   ServerAndPluginInfoObj,
   Tag,
 } from '@/api/index.ts';
-import { generateIconBgColor } from '@/utils/index.ts';
+import { generateIconBgColor, getCurrentUsername } from '@/utils/index.ts';
 import { createStatusWatcher } from '@/utils/statusWatcher';
 
 import McpQuick from '@/views/components/McpQuick.vue';
@@ -186,7 +186,8 @@ const MESSAGE_DURATION = 3000;
 // 获取详情页信息
 const getDetail = async () => {
   try {
-    const res = await queryDetail({tag: tag.value, key: key.value});
+    const username = await getCurrentUsername();
+    const res = await queryDetail({tag: tag.value, key: key.value, user_name: username});
     if (res && res.is_success) {
       itemDetail.value = res.data;
       // 处理 md
@@ -235,10 +236,12 @@ const uninstallPackage = async () => {
 // 添加到智能体应用
 const addApp = async (appName: string) => {
   try {
+    const username = await getCurrentUsername();
     const res = await mcpAgent({ 
       action: 'add', 
       package_name: itemDetail.value.package_name || '', 
-      app_name: appName 
+      app_name: appName,
+      user_name: username
     });
     if (res && res.is_success) {
       await getDetail();
@@ -253,10 +256,12 @@ const addApp = async (appName: string) => {
 // 删除智能体应用
 const deleteApp = async (appName: string) => {
   try {
+    const username = await getCurrentUsername();
     const res = await mcpAgent({ 
       action: 'delete', 
       package_name: itemDetail.value.package_name || '', 
-      app_name: appName 
+      app_name: appName,  
+      user_name: username
     });
     if (res && res.is_success) {
       await getDetail();

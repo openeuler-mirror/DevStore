@@ -52,5 +52,29 @@ export async function updateRouteQuery(
   await router.push({ query: newQuery });
 }
 
+/**
+ * 获取当前系统用户名
+ * @returns Promise<string> 返回用户名，如果获取失败返回 'unknown'
+ */
+export async function getCurrentUsername(): Promise<string> {
+  try {
+    // 检查是否在 Electron 环境中
+    if (typeof window !== 'undefined' && (window as any).electronAPI) {
+      const result = await (window as any).electronAPI.getUsername();
+      if (result && result.success) {
+        return result.username;
+      }
+      console.warn('Failed to get username from Electron:', result?.error);
+    }
+    
+    // 如果不在 Electron 环境中或获取失败，返回默认值
+    console.warn('Not in Electron environment or failed to get username, using fallback');
+    return 'unknown';
+  } catch (error) {
+    console.error('Error getting username:', error);
+    return 'unknown';
+  }
+}
+
 // 导出语言检测相关函数
 export { detectSystemLanguage, getSystemLanguages, isChineseLanguage } from './languageDetection';

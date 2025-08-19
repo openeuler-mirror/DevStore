@@ -12,6 +12,7 @@
 # Create: 2025-07-18
 # ======================================================================================================================
 
+import os
 import time
 import psutil
 
@@ -35,3 +36,29 @@ def is_process_running(keyword, timeout=600):
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             continue
     return False
+
+
+def validate_executable_file(file_path):
+    """
+    校验执行文件的存在性和可执行权限
+    :param file_path: 要校验的文件路径
+    :return: tuple (is_valid, error_message)
+             is_valid: bool, 文件是否有效
+             error_message: str, 错误信息（如果有）
+    """
+    if not file_path:
+        return False, "文件路径不能为空"
+
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        return False, f"文件不存在: {file_path}"
+
+    # 检查是否为文件
+    if not os.path.isfile(file_path):
+        return False, f"路径不是文件: {file_path}"
+
+    # 检查是否有可执行权限
+    if not os.access(file_path, os.X_OK):
+        return False, f"文件没有可执行权限: {file_path}"
+
+    return True, ""

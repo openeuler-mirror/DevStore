@@ -3,13 +3,13 @@
 
 Name:           dev-store
 Version:        1.0.0
-Release:        1%{?dist}
+Release:        1
 Summary:        Development Store Management System
 
 Group:          Development/Tools
 License:        MulanPSL-2.0
-URL:            https://github.com/huawei/dev-store
-Source0:        %{name}-%{version}.tar.gz
+URL:            https://gitee.com/openeuler/DevStore
+Source0:        %{name}-%{version}-%{_target_cpu}.tar.gz
 
 # 依赖包
 Requires:       python3-django-rest-framework
@@ -37,7 +37,7 @@ artifacts, and services. The system includes a modern Electron-based desktop
 application and a Django-based backend API.
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}-%{_target_cpu}
 
 %build
 # 无需编译步骤
@@ -205,7 +205,7 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
-* Mon Jan 27 2025 Huawei Technologies Co., Ltd. <dev@huawei.com> - 1.0.0-1
+* Tue Aug 19 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.0-1
 - Initial release of DevStore
 - Includes frontend Electron application
 - Includes backend Django application
