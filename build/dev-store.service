@@ -1,0 +1,25 @@
+[Unit]
+Description=DevStore Development Management System
+Documentation=https://gitee.com/openeuler/DevStore
+After=network.target mariadb.service
+Wants=mariadb.service
+
+[Service]
+Type=exec
+User=root
+Group=root
+WorkingDirectory=/var/lib/dev-store/src
+ExecStartPre=/usr/bin/python3 /var/lib/dev-store/src/manage.py makemigrations
+ExecStartPre=/usr/bin/python3 /var/lib/dev-store/src/manage.py migrate
+ExecStart=/usr/bin/dev-store
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dev-store
+
+Environment=PYTHONPATH=/var/lib/dev-store/src
+Environment=DJANGO_SETTINGS_MODULE=dev_store.settings
+
+[Install]
+WantedBy=multi-user.target

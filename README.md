@@ -1,37 +1,30 @@
 # DevStore
 
 #### 介绍
-Developer Tools Quick Installation Platform
 
-#### 软件架构
-软件架构说明
+DevStore 是 DevStation 平台默认的软件商店，面向开发者提供 MCP 服务、OEDP 插件的快速安装能力。
 
 
-#### 安装教程
+#### 首次使用
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+如果您首次打开 DevStore，界面上没有任何组件，需要执行如下初始化操作。
 
-#### 使用说明
+1. 在配置文件中设置 MariaDB 的 root 密码 和 dev-store 密码：
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+```bash
+sudo vim /etc/dev-store/mariadb/init_mariadb.conf
+```
 
-#### 参与贡献
+2. 初始化 MariaDB：
 
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
+```bash
+sh /var/lib/dev-store/services/init_mariadb.sh auto
+```
 
+3. 启动 DevStore 后端服务：
 
-#### 特技
+```bash
+systemctl start dev-store && systemctl enable dev-store
+```
 
-1.  使用 Readme\_XXX.md 来支持不同的语言，例如 Readme\_en.md, Readme\_zh.md
-2.  Gitee 官方博客 [blog.gitee.com](https://blog.gitee.com)
-3.  你可以 [https://gitee.com/explore](https://gitee.com/explore) 这个地址来了解 Gitee 上的优秀开源项目
-4.  [GVP](https://gitee.com/gvp) 全称是 Gitee 最有价值开源项目，是综合评定出的优秀开源项目
-5.  Gitee 官方提供的使用手册 [https://gitee.com/help](https://gitee.com/help)
-6.  Gitee 封面人物是一档用来展示 Gitee 会员风采的栏目 [https://gitee.com/gitee-stars/](https://gitee.com/gitee-stars/)
+4. 点击界面右上角的同步按钮，或者重启 DevStore。开始体验 DevStore。
