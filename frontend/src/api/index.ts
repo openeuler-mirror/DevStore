@@ -97,7 +97,7 @@ export function fetchLog(params: { key: string }): Promise<LogResponse> {
 
 // 详情页
 // 获取详情页信息
-export function queryDetail(params: { tag: Tag; key: string }) {
+export function queryDetail(params: { tag: Tag; key: string; user_name: string }) {
   return httpRequest({
     url: `${prefix}artifacts/details/`,
     method: 'get',
@@ -126,7 +126,7 @@ export function deletePackage(params: { tag: Tag; key: string }) {
 }
 
 // hl: wip 智能体应用管理
-export function mcpAgent(params: { action: 'add' | 'delete'; package_name: string; app_name: string }) {
+export function mcpAgent(params: { action: 'add' | 'delete'; package_name: string; app_name: string; user_name: string }) {
   return httpRequest({
     url: `${prefix}artifacts/mcp_config_manage/`,
     method: 'post',

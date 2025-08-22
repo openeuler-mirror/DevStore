@@ -143,6 +143,7 @@ frontend/dist
 frontend/public/mock
 frontend/mock
 frontend/release
+frontend/temp-bin
 
 # local env files
 .env.local

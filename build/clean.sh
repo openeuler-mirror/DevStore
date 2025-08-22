@@ -57,16 +57,21 @@ clean_build_dir() {
         log_info "已清理 temp_backend 目录"
     fi
     
-    # 清理源码包
-    if [ -f "dev-store-1.0.0.tar.gz" ]; then
-        rm -f dev-store-1.0.0.tar.gz
-        log_info "已清理源码包"
-    fi
+    # 清理源码包（支持任意版本号和架构）
+    for tarball in dev-store-*.tar.gz; do
+        if [ -f "$tarball" ]; then
+            rm -f "$tarball"
+            log_info "已清理源码包: $tarball"
+        fi
+    done
     
-    if [ -d "dev-store-1.0.0" ]; then
-        rm -rf dev-store-1.0.0
-        log_info "已清理源码目录"
-    fi
+    # 清理所有版本的源码目录（支持任意版本号和架构）
+    for dir in dev-store-*; do
+        if [ -d "$dir" ]; then
+            rm -rf "$dir"
+            log_info "已清理源码目录: $dir"
+        fi
+    done
 }
 
 # 清理RPM构建环境
@@ -112,6 +117,22 @@ clean_frontend() {
         rm -rf release
         log_info "已清理 release 目录"
     fi
+    
+
+}
+
+# 清理 electron-builder 缓存
+clean_electron_cache() {
+    log_info "清理 electron-builder 缓存..."
+    
+    local cache_dir="$HOME/.cache/electron-builder"
+    
+    if [ -d "$cache_dir" ]; then
+        rm -rf "$cache_dir"
+        log_info "已清理 electron-builder 缓存目录: $cache_dir"
+    else
+        log_warn "electron-builder 缓存目录不存在，无需清理"
+    fi
 }
 
 # 显示帮助信息
@@ -119,11 +140,17 @@ show_help() {
     echo "用法: $0 [选项]"
     echo ""
     echo "选项:"
-    echo "  --all          清理所有文件，包括node_modules和package-lock.json"
+    echo "  --all          清理所有文件，包括node_modules、package-lock.json和electron-builder缓存"
     echo "  --rpmbuild     仅清理RPM构建环境"
     echo "  --frontend     仅清理前端构建产物"
     echo "  --build        仅清理构建目录临时文件"
+    echo "  --cache        仅清理electron-builder缓存"
     echo "  -h, --help     显示此帮助信息"
+    echo ""
+    echo "架构支持:"
+    echo "  脚本会自动清理所有架构的构建产物，包括："
+    echo "  - x86_64: release/linux-unpacked"
+    echo "  - ARM64:  release/linux-arm64-unpacked"
     echo ""
     echo "默认行为: 清理构建目录临时文件"
 }
@@ -135,6 +162,7 @@ main() {
             clean_build_dir
             clean_rpmbuild
             clean_frontend --all
+            clean_electron_cache
             ;;
         --rpmbuild)
             clean_rpmbuild
@@ -144,6 +172,9 @@ main() {
             ;;
         --build)
             clean_build_dir
+            ;;
+        --cache)
+            clean_electron_cache
             ;;
         -h|--help)
             show_help

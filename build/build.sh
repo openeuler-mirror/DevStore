@@ -48,9 +48,14 @@ show_help() {
   $0                 完整构建（包括前端和后端）
   $0 --skip-frontend 跳过前端构建，仅打包RPM
 
+架构支持:
+  脚本会自动检测当前系统架构（x86_64 或 aarch64/arm64）
+  并使用统一的构建流程。
+
 注意:
-  使用 --skip-frontend 选项时，请确保 frontend/release/linux-unpacked 目录存在
-  且包含有效的前端构建结果。
+  - 使用 --skip-frontend 选项时，请确保对应架构的构建结果目录存在
+    x86_64: frontend/release/linux-unpacked
+    ARM64:  frontend/release/linux-arm64-unpacked
 EOF
 }
 
@@ -169,6 +174,23 @@ get_system_arch() {
     esac
 }
 
+# 获取RPM架构名称
+get_rpm_arch() {
+    local arch=$(uname -m)
+    case "$arch" in
+        x86_64)
+            echo "x86_64"
+            ;;
+        aarch64|arm64)
+            echo "aarch64"
+            ;;
+        *)
+            log_error "不支持的架构: $arch"
+            exit 1
+            ;;
+    esac
+}
+
 # 构建前端
 build_frontend() {
     if [ "$SKIP_FRONTEND" = true ]; then
@@ -176,15 +198,25 @@ build_frontend() {
         
         cd "$PROJECT_ROOT/frontend"
         
+        # 获取当前架构以确定正确的目录名
+        local target_arch=$(get_system_arch)
+        local expected_dir=""
+        
+        if [ "$target_arch" = "arm64" ]; then
+            expected_dir="release/linux-arm64-unpacked"
+        else
+            expected_dir="release/linux-unpacked"
+        fi
+        
         # 检查是否存在已构建的前端文件
-        if [ ! -d "release/linux-unpacked" ]; then
-            log_error "未找到已构建的前端文件目录: release/linux-unpacked"
+        if [ ! -d "$expected_dir" ]; then
+            log_error "未找到已构建的前端文件目录: $expected_dir"
             log_error "请先运行完整构建或移除 --skip-frontend 选项"
             exit 1
         fi
         
         # 检查关键文件是否存在
-        if [ ! -f "release/linux-unpacked/dev-store-app" ]; then
+        if [ ! -f "$expected_dir/dev-store-app" ]; then
             log_error "前端构建结果不完整，缺少主执行文件"
             log_error "请重新运行完整构建"
             exit 1
@@ -216,11 +248,30 @@ build_frontend() {
     
     # 使用 electron-builder 构建 RPM 包，指定架构
     log_info "构建 Electron 应用 ($target_arch)..."
-    npx electron-builder --linux rpm --$target_arch
     
-    # 检查构建结果
-    if [ ! -d "release/linux-unpacked" ]; then
-        log_error "前端构建失败，未找到 linux-unpacked 目录"
+    # 设置环境变量以确保正确的架构构建
+    export TARGET_ARCH=$target_arch
+    
+    # 根据架构选择正确的构建命令
+    if [ "$target_arch" = "arm64" ]; then
+        npx electron-builder --linux rpm --arm64
+    else
+        npx electron-builder --linux rpm --x64
+    fi
+    
+    # 检查构建结果（根据架构调整目录名）
+    local expected_dir=""
+    if [ "$target_arch" = "arm64" ]; then
+        expected_dir="release/linux-arm64-unpacked"
+    else
+        expected_dir="release/linux-unpacked"
+    fi
+    
+    if [ ! -d "$expected_dir" ]; then
+        log_error "前端构建失败，未找到 $expected_dir 目录"
+        # 列出实际生成的目录以便调试
+        log_info "实际生成的目录："
+        ls -la release/ || true
         exit 1
     fi
     
@@ -255,8 +306,26 @@ prepare_frontend() {
     rm -rf "$temp_frontend"
     mkdir -p "$temp_frontend"
     
-    # 复制前端构建结果
-    cp -rf "$PROJECT_ROOT/frontend/release/linux-unpacked" "$temp_frontend/"
+    # 获取当前架构以确定正确的目录名
+    local target_arch=$(get_system_arch)
+    local source_dir=""
+    
+    if [ "$target_arch" = "arm64" ]; then
+        source_dir="$PROJECT_ROOT/frontend/release/linux-arm64-unpacked"
+    else
+        source_dir="$PROJECT_ROOT/frontend/release/linux-unpacked"
+    fi
+    
+    # 检查源目录是否存在
+    if [ ! -d "$source_dir" ]; then
+        log_error "未找到前端构建结果目录: $source_dir"
+        log_info "可用的目录："
+        ls -la "$PROJECT_ROOT/frontend/release/" || true
+        exit 1
+    fi
+    
+    # 复制前端构建结果，并重命名为统一的目录名
+    cp -rf "$source_dir" "$temp_frontend/linux-unpacked"
     
     log_info "前端文件准备完成"
 }
@@ -268,23 +337,15 @@ create_source_package() {
     cd "$BUILD_DIR"
     
     # 获取当前架构
-    local target_arch=$(get_system_arch)
-    local rpm_arch
-    case "$target_arch" in
-        x64)
-            rpm_arch="x86_64"
-            ;;
-        arm64)
-            rpm_arch="aarch64"
-            ;;
-    esac
+    local rpm_arch=$(get_rpm_arch)
+    log_info "目标架构: $rpm_arch"
     
     # 获取版本号
     local version=$(get_version_from_spec)
     log_info "从spec文件中读取的版本号: $version"
     
     # 创建源码包目录
-    local source_dir="dev-store-$version"
+    local source_dir="dev-store-$version-$rpm_arch"
     rm -rf "$source_dir"
     mkdir -p "$source_dir"
     
@@ -369,11 +430,13 @@ EOF
     cp "$PROJECT_ROOT/README.en.md" "$source_dir/" 2>/dev/null || true
     cp "$PROJECT_ROOT/LICENSE" "$source_dir/" 2>/dev/null || true
     
-    # 创建tar.gz源码包
-    tar -czf "dev-store-$version.tar.gz" "$source_dir"
+    # 创建tar.gz源码包（包含架构信息）
+    local tarball_name="dev-store-$version-$rpm_arch.tar.gz"
+    tar -czf "$tarball_name" "$source_dir"
+    log_info "已创建源码包: $tarball_name"
     
     # 移动到RPM构建目录
-    mv "dev-store-$version.tar.gz" "$WORKSPACE_DIR/rpmbuild/SOURCES/"
+    mv "$tarball_name" "$WORKSPACE_DIR/rpmbuild/SOURCES/"
     
     # 复制spec文件
     cp "dev-store.spec" "$WORKSPACE_DIR/rpmbuild/SPECS/"

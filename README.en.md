@@ -18,13 +18,13 @@ sudo vim /etc/dev-store/mariadb/init_mariadb.conf
 2. Initialize MariaDB:
 
 ```bash
-sh /var/lib/dev-store/services/init_mariadb.sh auto
+sudo sh /var/lib/dev-store/services/init_mariadb.sh auto
 ```
 
 3. Start the DevStore backend service:
 
 ```bash
-systemctl start dev-store && systemctl enable dev-store
+sudo systemctl start dev-store && sudo systemctl enable dev-store
 ```
 
 4. Click the sync button in the upper right corner of the interface, or restart DevStore. Start experiencing DevStore.

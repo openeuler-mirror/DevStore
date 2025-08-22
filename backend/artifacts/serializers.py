@@ -20,9 +20,10 @@ from rest_framework import serializers
 
 from artifacts.models import MCPServer, OEDPPlugin
 from constants.choices import ArtifactTag
+from constants.paths import MCP_SCRIPT_PATH
 from tasks.models import Task
 from utils.cmd_executor import CommandExecutor
-from utils.common import is_process_running
+from utils.common import is_process_running, validate_executable_file
 from utils.logger import init_log
 
 logger = init_log('run.log')
@@ -96,6 +97,10 @@ class MCPDetailSerializer(serializers.ModelSerializer):
     app_list = serializers.SerializerMethodField()
     updated_at = serializers.DateTimeField(format="%Y-%m-%d %H:%M")
     
+    def __init__(self, instance, user_name=None, *args, **kwargs):
+        super().__init__(instance, *args, **kwargs)
+        self.user_name = user_name
+    
     class Meta:
         model = MCPServer
         fields = (
@@ -132,16 +137,22 @@ class MCPDetailSerializer(serializers.ModelSerializer):
             return Task.Status.NOT_YET
         return Task.Status.SUCCESS
     
-    @staticmethod
-    def get_app_list(obj):
-        cmd = ["/var/lib/dev-store/src/mcp_manage.sh", "mcp-status", obj.package_name]
+    def get_app_list(self, obj):
+        # 校验MCP脚本文件
+        is_valid, error_msg = validate_executable_file(MCP_SCRIPT_PATH)
+        if not is_valid:
+            logger.error(f"MCP script validation failed: {error_msg}")
+            return []
+
+        user_name = self.user_name if self.user_name else ""
+        cmd = [MCP_SCRIPT_PATH, "mcp-status", obj.package_name, user_name]
         executor = CommandExecutor(cmd, timeout=30)
         stdout, _, returncode = executor.run()
         if returncode == 0:  # 成功执行
             stdout = stdout.strip() if stdout else ""
             app_status_list = json.loads(stdout)
             return app_status_list
-        else:  
+        else:
             return []
         
     @staticmethod

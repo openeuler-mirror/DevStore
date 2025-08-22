@@ -21,15 +21,15 @@
           <el-menu-item index="1" class="dev-store">DevStore</el-menu-item>
           <el-sub-menu index="2">
             <template #title>{{ t('nav.userDoc') }}</template>
-            <el-menu-item index="2-1"><a href="https://gitee.com/openeuler/DevStore/blob/master/README.md">中文文档</a></el-menu-item>
-            <el-menu-item index="2-2"><a href="https://gitee.com/openeuler/DevStore/blob/master/README.en.md">English Doc</a></el-menu-item>
+            <el-menu-item index="2-1" @click="openLink('https://gitee.com/openeuler/DevStore/blob/master/README.md')">中文文档</el-menu-item>
+            <el-menu-item index="2-2" @click="openLink('https://gitee.com/openeuler/DevStore/blob/master/README.en.md')">English Doc</el-menu-item>
           </el-sub-menu>
           <el-menu-item index="3">{{ t('nav.devDoc') }}</el-menu-item>
           <el-sub-menu index="4" class="code-repository">
             <template #title>{{ t('nav.codeRepository') }}</template>
-            <el-menu-item index="4-1"><a href="https://gitee.com/openeuler/DevStore">DevStore</a></el-menu-item>
-            <el-menu-item index="4-2"><a href="https://gitee.com/openeuler/mcp-servers">mcp-servers</a></el-menu-item>
-            <el-menu-item index="4-3"><a href="https://gitee.com/openeuler/oeDeploy">oeDeploy</a></el-menu-item>
+            <el-menu-item index="4-1" @click="openLink('https://gitee.com/openeuler/DevStore')">DevStore</el-menu-item>
+            <el-menu-item index="4-2" @click="openLink('https://gitee.com/openeuler/mcp-servers')">mcp-servers</el-menu-item>
+            <el-menu-item index="4-3" @click="openLink('https://gitee.com/openeuler/oeDeploy')">oeDeploy</el-menu-item>
           </el-sub-menu>
           <el-menu-item index="5">{{ t('nav.feedback') }}</el-menu-item>
           <el-menu-item index="6" @click="isLogVisible = true">{{ t('nav.log') }}</el-menu-item>
@@ -124,6 +124,11 @@ const sync = async () => {
   }
 };
 
+// 打开链接的公共方法
+const openLink = (url: string) => {
+  window.open(url, '_blank');
+};
+
 onMounted(async () => {
   // 首次打开，同步数据
   await sync();
@@ -170,12 +175,10 @@ onMounted(async () => {
           font-weight: 600;
           font-size: 18px;
         }
-        .el-menu-item a {
-          color: var(--o-text-color-primary);
-          text-decoration: none;
-          font-size: 16px;
+        .el-menu-item {
+          cursor: pointer;
           &:hover {
-            color: var(--o-text-color-primary);
+            color: var(--o-theme-color-primary-blue);
           }
         }
       }
@@ -214,35 +217,20 @@ onMounted(async () => {
   .el-menu-item {
     font-size: 14px !important;
     color: var(--o-text-color-primary) !important;
+    cursor: pointer !important;
+    transition: color 0.3s ease !important;
+    
     &:hover {
-      color: var(--o-text-color-primary) !important;
+      color: var(--o-theme-color-primary-blue) !important;
     }
     
-    a {
-      color: var(--o-text-color-primary) !important;
-      text-decoration: none !important;
-      font-size: 14px !important;
-      display: block !important;
-      width: 100% !important;
-      padding: 0 20px !important;
-      transition: color 0.3s ease !important;
-      
-      &:hover {
-        color: var(--o-theme-color-primary-blue) !important;
-      }
-      
-      &:visited {
-        color: var(--o-text-color-primary) !important;
-      }
-      
-      &:focus {
-        outline: none !important;
-        color: var(--o-theme-color-primary-blue) !important;
-      }
-      
-      &:active {
-        color: var(--o-theme-color-primary-blue) !important;
-      }
+    &:focus {
+      outline: none !important;
+      color: var(--o-theme-color-primary-blue) !important;
+    }
+    
+    &:active {
+      color: var(--o-theme-color-primary-blue) !important;
     }
   }
 }
@@ -272,21 +260,5 @@ body .el-popper[data-popper-placement^="bottom"] .el-menu-item {
   }
 }
 
-/* 链接通用样式 */
-.el-sub-menu__title, .el-menu-item {
-  a {
-    color: var(--o-text-color-primary) !important;
-    text-decoration: none !important;
-    
-    &:link, &:visited {
-      color: var(--o-text-color-primary) !important;
-      text-decoration: none !important;
-    }
-    
-    &:hover, &:focus {
-      color: var(--o-theme-color-primary-blue) !important;
-      text-decoration: none !important;
-    }
-  }
-}
+
 </style>

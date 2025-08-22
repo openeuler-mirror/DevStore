@@ -22,7 +22,13 @@
     ],
     "linux": {
       "target": [
-        "rpm"
+        {
+          "target": "rpm",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "src/assets/logo.png",
       "category": "Development",
@@ -67,7 +73,7 @@
     "@vue/tsconfig": "^0.7.0",
     "concurrently": "^9.2.0",
     "cross-env": "^7.0.3",
-    "electron": "^37.3.0",
+    "electron": "^37.3.1",
     "electron-builder": "^26.0.12",
     "eslint": "^9.33.0",
     "eslint-config-prettier": "^10.1.8",

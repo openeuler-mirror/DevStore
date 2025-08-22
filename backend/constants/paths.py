@@ -27,6 +27,11 @@ TASK_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_DIR, 'task_scheduler.conf')
 # 日志目录
 LOG_DIR = '/var/log/dev-store'
 
+# 源码目录
+SRC_DIR = '/var/lib/dev-store/src'
+# /var/lib/dev-store/src/mcp_manage.sh MCP 管理脚本路径
+MCP_SCRIPT_PATH = os.path.join(SRC_DIR, 'mcp_manage.sh')
+
 # /etc/oedp/config/repo/cache OEDP 插件缓存目录
 PLUGIN_REPO_DIR = '/etc/oedp/config/repo/cache'
 # /etc/oedp/config/repo/details OEDP 插件配置信息缓存目录
