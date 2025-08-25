@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=DevStore
+Name[zh_CN]=开发者商店
+Name[en_US]=DevStore
+Name[en]=DevStore
+Comment=Developer Software Store (including MCP services and OEDP plugins)
+Comment[zh_CN]=面向开发者的软件商店(包括MCP服务、OEDP插件)
+Comment[en_US]=Developer Software Store (including MCP services and OEDP plugins)
+Comment[en]=Developer Software Store (including MCP services and OEDP plugins)
+Exec=/opt/dev-store/app/dev-store-app
+Icon=dev-store
+Type=Application
+Categories=Development;
+StartupWMClass=dev-store-app

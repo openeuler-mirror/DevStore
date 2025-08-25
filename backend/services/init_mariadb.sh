@@ -22,6 +22,7 @@ source ${SCRIPT_DIR}/log.sh
 # 读取配置文件
 function read_config_value {
     local key="$1"
+    local allow_empty="$2"  # 新增参数，表示是否允许空值
 
     # 判断配置文件中 key 是否存在
     local item=$(grep "^${key} =" "${INIT_MARIADB_CONFIG_FILE}")
@@ -36,16 +37,27 @@ function read_config_value {
     if [[ -n "${value}" ]]; then
         echo "${value}"
     else
-        error "The value of key '${key}' is empty in the configuration file ${INIT_MARIADB_CONFIG_FILE}"
-        exit 1
+        # 如果允许空值，则返回空字符串，否则报错退出
+        if [[ "${allow_empty}" == "true" ]]; then
+            echo ""
+        else
+            error "The value of key '${key}' is empty in the configuration file ${INIT_MARIADB_CONFIG_FILE}"
+            exit 1
+        fi
     fi
 }
 
 # 检查密码复杂度，密码至少包含8个字符,大小写字母、数字、特殊符号三种以上
+# 如果密码为空，则跳过复杂度检查
 function check_password_complexity()
 {
   local variable_content=$1
   local complexity=0
+
+  # 如果密码为空，直接返回成功（跳过复杂度检查）
+  if [[ -z "${variable_content}" ]]; then
+    return 0
+  fi
 
   if [[ ${#variable_content} -ge 8 ]]; then
     complexity=$((${complexity}+1))
@@ -78,72 +90,83 @@ function check_password_complexity()
 }
 
 
-# 配置MariaDB服务
-function configure_mariadb()
+# 启动 MariaDB 服务并设置自启动
+function start_mariadb_service()
 {
-  local auto=$1
-  local Y_N
-
-  # 交互式执行会询问 MariaDB 是否已被配置过，自动执行默认 MariaDB 没有被配置过
-  if [ "${auto}" == "auto" ]; then
-    Y_N="n"
-  else
-    read -p "Whether MariaDB is configured? [Y/n] (default: n) " Y_N
+  info "Starting the MariaDB service."
+  systemctl start mariadb
+  if [[ $? -ne 0 ]]; then
+    error "Failed to start the MariaDB service."
+    exit 1
   fi
-  # 判断 MariaDB 是否已被配置过，若已被配置过则跳过，若没有则开始配置
-  if [[ "${Y_N}" == "y" || "${Y_N}" == "Y" ]]; then
-    return
-  elif [[ ! -n "${Y_N}" || "${Y_N}" == "N" || "${Y_N}" == "n" ]]; then
-    # 启动 MariaDB 服务
-    info "Starting the MariaDB service."
-    systemctl start mariadb
-    if [[ $? -ne 0 ]]; then
-      error "Failed to start the MariaDB service."
+  
+  # 检查服务是否启动
+  mariadb_status=$(systemctl is-active mariadb)
+  if [[ "${mariadb_status}" == "active" ]]; then
+    info "The MariaDB service is active."
+  else
+    error "The MariaDB service is inactive."
+    exit 1
+  fi
+  
+  # 设置为开机自启动服务
+  systemctl enable mariadb
+  if [[ $? -ne 0 ]]; then
+    warn "Failed to enable the MariaDB service."
+  fi
+}
+
+# 配置防火墙，开放 MariaDB 端口
+function configure_firewall_for_mariadb()
+{
+  info "Start to check firewall."
+  if systemctl is-active --quiet firewalld; then
+    port_3306=$(firewall-cmd --query-port=3306/tcp)
+    if [[ "${port_3306}" == "no" ]]; then
+      port_3306=$(firewall-cmd --zone=public --add-port=3306/tcp --permanent)
+      firewall-cmd --reload
+    fi
+    port_3306=$(firewall-cmd --query-port=3306/tcp)
+    if [[ "${port_3306}" != "yes" ]]; then
+      error "Failed to enable port 3306."
       exit 1
     fi
-    # 检查服务是否启动
-    mariadb_status=$(systemctl is-active mariadb)
-    if [[ "${mariadb_status}" == "active" ]]; then
-      info "The MariaDB service is active."
+  fi
+  info "Check firewall done."
+}
+
+
+# 执行 MariaDB 安全配置
+function execute_mysql_secure_installation()
+{
+  local auto="$1"
+  
+  info "Execute the command [mysql_secure_installation] to perform MariaDB security configuration."
+  
+  if [ "${auto}" == "auto" ]; then
+    local root_password="$(read_config_value 'root_password' 'true')"
+    local default_root_pw="\n"
+    local switch_unix_socket="n"
+    local remove_anonymous_users="y"
+    local disallow_root_login_remotely="n"
+    local remove_test_database_and_access_to_it="y"
+    local reload_privilege_tables="y"
+    local input_string
+    
+    # 根据 root_password 是否为空决定是否设置密码
+    if [[ -z "${root_password}" ]]; then
+      # 密码为空，跳过设置密码
+      local set_root_pw="n"
+      input_string="${default_root_pw}"
+      input_string+="${switch_unix_socket}\n"
+      input_string+="${set_root_pw}\n"
+      input_string+="${remove_anonymous_users}\n"
+      input_string+="${disallow_root_login_remotely}\n"
+      input_string+="${remove_test_database_and_access_to_it}\n"
+      input_string+="${reload_privilege_tables}\n"
     else
-      error "The MariaDB service is inactive."
-      exit 1
-    fi
-    # 设置为开机自启动服务
-    systemctl enable mariadb
-    if [[ $? -ne 0 ]]; then
-      warn "Failed to enable the MariaDB service."
-    fi
-
-    # 检查防火墙是否启动，如果启动则检查 3306 端口是否在防火墙白名单中，如果不存在则添加到白名单中
-    info "Start to check firewall."
-    if systemctl is-active --quiet firewalld; then
-      port_3306=$(firewall-cmd --query-port=3306/tcp)
-      if [[ "${port_3306}" == "no" ]]; then
-        port_3306=$(firewall-cmd --zone=public --add-port=3306/tcp --permanent)
-        firewall-cmd --reload
-      fi
-      port_3306=$(firewall-cmd --query-port=3306/tcp)
-      if [[ "${port_3306}" != "yes" ]]; then
-        error "Failed to enable port 3306."
-        exit 1
-      fi
-    fi
-    info "Check firewall done."
-
-    # 执行 mysql_secure_installation，进行 MariaDB 的安全配置
-    info "Execute the command [mysql_secure_installation] to perform MariaDB security configuration."
-    if [ "${auto}" == "auto" ]; then
-      default_root_pw="\n"
-      switch_unix_socket="n"
-      set_root_pw="y"
-      root_password="$(read_config_value 'root_password')"
-      change_root_pw="n"
-      remove_anonymous_users="y"
-      disallow_root_login_remotely="n"
-      remove_test_database_and_access_to_it="y"
-      reload_privilege_tables="y"
-      # 首次安装，mariadb 的 root 密码为空，需要设置 root 密码
+      # 密码不为空，设置密码
+      local set_root_pw="y"
       input_string="${default_root_pw}"
       input_string+="${switch_unix_socket}\n"
       input_string+="${set_root_pw}\n"
@@ -153,8 +176,10 @@ function configure_mariadb()
       input_string+="${disallow_root_login_remotely}\n"
       input_string+="${remove_test_database_and_access_to_it}\n"
       input_string+="${reload_privilege_tables}\n"
-      expect -c "
-set timeout 5
+    fi
+    
+    expect -c "
+set timeout 10
 spawn mysql_secure_installation
 expect \"Enter current password for root (enter for none):\"
 send \"${input_string}\"
@@ -167,21 +192,61 @@ expect {
   }
 }
 "
-      return_code=$?
-      if [[ "${return_code}" == "1" ]]; then
-        echo ""
-        error "Automatically configuring the mariadb fails, please try to configure manually."
-        exit 1
-      fi
-    else
-      mysql_secure_installation
+    local return_code=$?
+    if [[ "${return_code}" == "1" ]]; then
+      echo ""
+      error "Automatically configuring the mariadb fails, please try to configure manually."
+      exit 1
     fi
-    info "Perform MariaDB security configuration successfully."
-    return
+  else
+    mysql_secure_installation
+  fi
+  
+  info "Perform MariaDB security configuration successfully."
+}
+
+# 检查 MariaDB 是否已配置
+function is_mariadb_configured()
+{
+  local auto="$1"
+  local Y_N
+  
+  # 交互式执行会询问 MariaDB 是否已被配置过，自动执行默认 MariaDB 没有被配置过
+  if [ "${auto}" == "auto" ]; then
+    Y_N="n"
+  else
+    read -p "Whether MariaDB is configured? [Y/n] (default: n) " Y_N
+  fi
+  
+  # 判断 MariaDB 是否已被配置过
+  if [[ "${Y_N}" == "y" || "${Y_N}" == "Y" ]]; then
+    return 0  # 已配置
+  elif [[ ! -n "${Y_N}" || "${Y_N}" == "N" || "${Y_N}" == "n" ]]; then
+    return 1  # 未配置
   else
     error "The input is invalid. Please input again."
     exit 1
   fi
+}
+
+# 配置MariaDB服务（重构后的主函数）
+function configure_mariadb()
+{
+  local auto=$1
+  
+  # 检查 MariaDB 是否已被配置过
+  if is_mariadb_configured "${auto}"; then
+    return
+  fi
+  
+  # 启动 MariaDB 服务
+  start_mariadb_service
+  
+  # 配置防火墙
+  configure_firewall_for_mariadb
+  
+  # 执行安全配置
+  execute_mysql_secure_installation "${auto}"
 }
 
 
@@ -225,7 +290,7 @@ unset Y_N
 
 # 输入或获取 dev_store 密码，并检查其复杂度是否符合要求
 if [ "${auto}" == "auto" ]; then
-  dev_store_passwd=$(read_config_value "dev_store_password")
+  dev_store_passwd=$(read_config_value "dev_store_password" "true")
   check_password_complexity ${dev_store_passwd}
   if [[ $? -ne 0 ]]; then
     error "The password must contain at least eight characters, including uppercase lowercase digits and special characters."
@@ -295,7 +360,7 @@ unset Y_N
 
 # 创建用户 dev_store 以及自定义名称的数据库
 if [ "${auto}" == "auto" ]; then
-  root_password=$(read_config_value "root_password")
+  root_password=$(read_config_value "root_password" "true")
 else
   stty -echo
   read -p "Enter the password of the root user of the MariaDB again: " root_password
@@ -303,7 +368,8 @@ else
   stty echo
 fi
 info "Start to create user dev_store and database ${mariadb_name}."
-mysql -uroot -p${root_password} << EOF
+# 准备 SQL 语句
+sql_commands="
 DROP DATABASE IF EXISTS ${mariadb_name};
 CREATE DATABASE IF NOT EXISTS ${mariadb_name} CHARACTER SET utf8 COLLATE utf8_bin;
 
@@ -314,7 +380,14 @@ flush privileges;
 CREATE USER 'dev_store'@'localhost' IDENTIFIED BY '${dev_store_passwd}';
 GRANT ALL ON ${mariadb_name}.* TO 'dev_store'@'localhost' IDENTIFIED BY '${dev_store_passwd}' WITH GRANT OPTION;
 flush privileges;
-EOF
+"
+
+# 根据 root_password 是否为空决定 MySQL 连接方式
+if [[ -z "${root_password}" ]]; then
+  echo "${sql_commands}" | mysql -uroot
+else
+  echo "${sql_commands}" | mysql -uroot -p${root_password}
+fi
 if [[ $? -ne 0 ]]; then
   error "Failed to create user dev_store and database ${mariadb_name}."
   exit 1
@@ -329,7 +402,9 @@ if [[ $? -ne 0 ]]; then
   error "Failed to update ${CONFIG_DIR}/mariadb.conf."
   exit 1
 fi
-python3 "${SERVICES_DIR}/encrypt_mariadb_passwd.py" ${dev_store_passwd}
+# 无论密码是否为空都需要进行加密，确保JSON文件存在
+# 这样Django应用才能正常读取配置
+python3 "${SERVICES_DIR}/encrypt_mariadb_passwd.py" "${dev_store_passwd}"
 if [[ $? -ne 0 ]]; then
   error "Failed to encrypt password of user dev_store."
   exit 1

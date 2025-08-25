@@ -46,18 +46,7 @@ clean_build_dir() {
     
     cd "$BUILD_DIR"
     
-    # 清理临时目录
-    if [ -d "temp_frontend" ]; then
-        rm -rf temp_frontend
-        log_info "已清理 temp_frontend 目录"
-    fi
-    
-    if [ -d "temp_backend" ]; then
-        rm -rf temp_backend
-        log_info "已清理 temp_backend 目录"
-    fi
-    
-    # 清理源码包（支持任意版本号和架构）
+    # 清理源码包
     for tarball in dev-store-*.tar.gz; do
         if [ -f "$tarball" ]; then
             rm -f "$tarball"
@@ -65,11 +54,11 @@ clean_build_dir() {
         fi
     done
     
-    # 清理所有版本的源码目录（支持任意版本号和架构）
+    # 清理打包过程中可能产生的临时源码目录
     for dir in dev-store-*; do
         if [ -d "$dir" ]; then
             rm -rf "$dir"
-            log_info "已清理源码目录: $dir"
+            log_info "已清理临时源码目录: $dir"
         fi
     done
 }
@@ -147,12 +136,14 @@ show_help() {
     echo "  --cache        仅清理electron-builder缓存"
     echo "  -h, --help     显示此帮助信息"
     echo ""
-    echo "架构支持:"
-    echo "  脚本会自动清理所有架构的构建产物，包括："
-    echo "  - x86_64: release/linux-unpacked"
-    echo "  - ARM64:  release/linux-arm64-unpacked"
+    echo "清理内容:"
+    echo "  - 源码包 (dev-store-*.tar.gz)"
+    echo "  - 临时源码目录"
+    echo "  - RPM构建环境 (~/rpmbuild/)"
+    echo "  - 前端构建产物 (dist/, release/)"
+    echo "  - Electron缓存 (~/.cache/electron-builder/)"
     echo ""
-    echo "默认行为: 清理构建目录临时文件"
+    echo "默认行为: 清理构建目录临时文件和源码包"
 }
 
 # 主函数

@@ -9,6 +9,7 @@ Type=exec
 User=root
 Group=root
 WorkingDirectory=/var/lib/dev-store/src
+ExecStartPre=/bin/sh /var/lib/dev-store/services/init_mariadb.sh auto
 ExecStartPre=/usr/bin/python3 /var/lib/dev-store/src/manage.py makemigrations
 ExecStartPre=/usr/bin/python3 /var/lib/dev-store/src/manage.py migrate
 ExecStart=/usr/bin/dev-store
