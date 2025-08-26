@@ -28,7 +28,7 @@ from artifacts.serializers import (
     PluginDetailSerializer,
 )
 from artifacts.tasks.install_mcp_task import InstallMCPTask
-from artifacts.utils import get_devstore_log
+from artifacts.utils import get_devstore_log,process_search_with_relevance
 from utils.mcp_tools import manage_mcp_config
 from constants.choices import ArtifactTag
 from tasks.models import Task
@@ -165,29 +165,49 @@ class ArtifactViewSet(viewsets.GenericViewSet):
 
 
     def list(self, request):
-        """获取插件和MCP服务列表
-        """
-        logger.info("==== API: [GET] /v1.0/artifacts/ ====")
+        """获取插件和MCP服务列表（支持搜索与排序）"""
+        logger.info(f"==== API: [GET] /v1.0/artifacts/ ====")
+        
         tag = request.query_params.get('tag')
-        oedp_queryset = OEDPPlugin.objects.all()
-        mcp_queryset = MCPServer.objects.all()
-        oedp_count = oedp_queryset.count()
-        mcp_count = mcp_queryset.count()
+        search_value = request.query_params.get('searchValue', '').strip()
+        sort = request.query_params.get('sort', 'rec')
+        
+        # 全量汇总（不随搜索变化，与原 list 保持一致）
+        oedp_count = OEDPPlugin.objects.count()
+        mcp_count = MCPServer.objects.count()
+
+        # tag 校验（与原 list 保持一致的错误处理）
         if tag == ArtifactTag.OEDP:
-            queryset = oedp_queryset
+            queryset = OEDPPlugin.objects.all()
         elif tag == ArtifactTag.MCP:
-            queryset = mcp_queryset
+            queryset = MCPServer.objects.all()
         else:
             msg = 'The query parameter [tag] is missing, or the value of the query parameter [tag] is invalid.'
             logger.error(msg)
             return Response({'is_success': False, 'message': msg}, status=status.HTTP_400_BAD_REQUEST)
-        queryset = self.paginate_queryset(queryset)
+        
+        queryset = process_search_with_relevance(queryset, search_value, sort)
+        total_count = queryset.count()   
+        queryset = self.paginate_queryset(queryset)  
         serializer = ArtifactSerializer(queryset, many=True)
         response = self.get_paginated_response(serializer.data)
-        data = { 'oedp_count': oedp_count, 'mcp_count': mcp_count }
-        data.update(response.data)
-        msg = "Get list information successfully."
-        response.data = { 'is_success': True, 'message': msg, 'data': data }
+        
+        data = { 
+            'oedp_count': oedp_count,    
+            'mcp_count': mcp_count       
+        }
+        data.update(response.data)      
+        if search_value:
+            data['search_keyword'] = search_value
+            data['search_count'] = total_count  
+            msg = f'Search with keyword "{search_value}", found {total_count} results.'
+        else:
+            msg = "Get list information successfully."
+        response.data = {
+            'is_success': True,
+            'message': msg,
+            'data': data
+        }       
         logger.debug(msg)
         return response
     
