@@ -1,4 +1,3 @@
-%global __os_install_post %{nil}
 %global debug_package %{nil}
 
 Name:           dev-store
@@ -9,7 +8,7 @@ Summary:        Development Store Management System
 Group:          Development/Tools
 License:        MulanPSL-2.0
 URL:            https://gitee.com/openeuler/DevStore
-Source0:        %{name}-%{version}-%{_target_cpu}.tar.gz
+Source0:        %{name}-%{version}.tar.gz
 
 # 依赖包
 Requires:       python3-django-rest-framework
@@ -29,6 +28,13 @@ Requires:       systemd
 # 构建依赖
 BuildRequires:  rpm-build
 BuildRequires:  rpmdevtools
+BuildRequires:  npm
+BuildRequires:  ruby
+BuildRequires:  ruby-devel
+BuildRequires:  rubygems
+BuildRequires:  gcc
+BuildRequires:  gcc-c++
+BuildRequires:  make
 
 %description
 DevStore is a comprehensive development store management system that provides
@@ -37,10 +43,62 @@ artifacts, and services. The system includes a modern Electron-based desktop
 application and a Django-based backend API.
 
 %prep
-%setup -q -n %{name}-%{version}-%{_target_cpu}
+%setup -q -n %{name}-%{version}
 
 %build
-# 无需编译步骤
+# 编译前端应用
+cd frontend
+
+# 设置Electron镜像
+export ELECTRON_MIRROR=https://mirrors.huaweicloud.com/electron/
+
+# 获取当前架构
+case "%{_arch}" in
+    x86_64)
+        TARGET_ARCH="x64"
+        ;;
+    aarch64|arm64)
+        TARGET_ARCH="arm64"
+        ;;
+    *)
+        echo "不支持的架构: %{_arch}"
+        exit 1
+        ;;
+esac
+
+echo "目标架构: $TARGET_ARCH"
+
+# 安装依赖 - 使用 npm ci 确保严格按照 package-lock.json
+npm ci
+
+# 构建应用
+npm run build
+
+# 设置环境变量以确保正确的架构构建
+export TARGET_ARCH=$TARGET_ARCH
+
+# 根据架构选择正确的构建命令，只构建unpacked目录
+if [ "$TARGET_ARCH" = "arm64" ]; then
+    npx electron-builder --linux dir --arm64
+else
+    npx electron-builder --linux dir --x64
+fi
+
+# 检查构建结果
+if [ "$TARGET_ARCH" = "arm64" ]; then
+    EXPECTED_DIR="release/linux-arm64-unpacked"
+else
+    EXPECTED_DIR="release/linux-unpacked"
+fi
+
+if [ ! -d "$EXPECTED_DIR" ]; then
+    echo "前端构建失败，未找到 $EXPECTED_DIR 目录"
+    ls -la release/ || true
+    exit 1
+fi
+
+echo "前端构建完成"
+cd ..
 
 %install
 # 创建安装目录结构
@@ -59,32 +117,55 @@ mkdir -p %{buildroot}/usr/share/icons/hicolor/32x32/apps
 mkdir -p %{buildroot}/usr/share/icons/hicolor/16x16/apps
 mkdir -p %{buildroot}/usr/lib/systemd/system
 
+# 获取当前架构以确定前端构建结果目录
+case "%{_arch}" in
+    x86_64)
+        FRONTEND_DIR="frontend/release/linux-unpacked"
+        ;;
+    aarch64|arm64)
+        FRONTEND_DIR="frontend/release/linux-arm64-unpacked"
+        ;;
+    *)
+        echo "不支持的架构: %{_arch}"
+        exit 1
+        ;;
+esac
+
 # 安装前端应用文件
-cp -rf opt/dev-store/app/* %{buildroot}/opt/dev-store/app/
+cp -rf $FRONTEND_DIR/* %{buildroot}/opt/dev-store/app/
 
 # 安装后端源码文件
-cp -rf var/lib/dev-store/src/* %{buildroot}/var/lib/dev-store/src/
-cp -rf var/lib/dev-store/services/* %{buildroot}/var/lib/dev-store/services/
+cp -rf backend/artifacts %{buildroot}/var/lib/dev-store/src/
+cp -rf backend/tasks %{buildroot}/var/lib/dev-store/src/
+cp -rf backend/constants %{buildroot}/var/lib/dev-store/src/
+cp -rf backend/dev_store %{buildroot}/var/lib/dev-store/src/
+cp -rf backend/utils %{buildroot}/var/lib/dev-store/src/
+cp -f backend/manage.py %{buildroot}/var/lib/dev-store/src/
+cp -f backend/mcp_manage.sh %{buildroot}/var/lib/dev-store/src/
+
+cp -rf backend/services/* %{buildroot}/var/lib/dev-store/services/
 
 # 安装配置文件
-cp -rf etc/dev-store/* %{buildroot}/etc/dev-store/
+cp -rf backend/configs/* %{buildroot}/etc/dev-store/
 
 # 安装启动脚本
-cp -f usr/bin/dev-store %{buildroot}/usr/bin/
+cp -f backend/dev-store-start.sh %{buildroot}/usr/bin/dev-store
 
 # 安装桌面文件
-cp -f usr/share/applications/dev-store.desktop %{buildroot}/usr/share/applications/
+cp -f build/dev-store.desktop %{buildroot}/usr/share/applications/
 
 # 安装图标文件到多个尺寸目录
-cp -f usr/share/icons/hicolor/256x256/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/
-cp -f usr/share/icons/hicolor/128x128/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/128x128/apps/
-cp -f usr/share/icons/hicolor/64x64/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/64x64/apps/
-cp -f usr/share/icons/hicolor/48x48/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/
-cp -f usr/share/icons/hicolor/32x32/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/32x32/apps/
-cp -f usr/share/icons/hicolor/16x16/apps/dev-store.png %{buildroot}/usr/share/icons/hicolor/16x16/apps/
+if [ -f "frontend/src/assets/logo.png" ]; then
+    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/dev-store.png
+    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/128x128/apps/dev-store.png
+    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/64x64/apps/dev-store.png
+    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/dev-store.png
+    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/32x32/apps/dev-store.png
+    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/16x16/apps/dev-store.png
+fi
 
 # 安装systemd服务文件
-cp -f usr/lib/systemd/system/dev-store.service %{buildroot}/usr/lib/systemd/system/
+cp -f build/dev-store.service %{buildroot}/usr/lib/systemd/system/
 
 # 设置文件权限
 chmod 755 %{buildroot}/opt/dev-store/app/dev-store-app

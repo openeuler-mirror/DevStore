@@ -13,9 +13,6 @@
 
 set -e
 
-# 默认配置
-SKIP_FRONTEND=false
-
 # 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -41,21 +38,21 @@ show_help() {
 用法: $0 [选项]
 
 选项:
-  --skip-frontend    跳过前端构建，复用已有的构建结果
   -h, --help         显示此帮助信息
 
-示例:
-  $0                 完整构建（包括前端和后端）
-  $0 --skip-frontend 跳过前端构建，仅打包RPM
+功能:
+  使用已打包的源码执行RPM构建。
+  
+前置条件:
+  需要先运行 pack.sh 创建源码包。
 
 架构支持:
   脚本会自动检测当前系统架构（x86_64 或 aarch64/arm64）
-  并使用统一的构建流程。
+  并使用对应的源码包进行构建。
 
 注意:
-  - 使用 --skip-frontend 选项时，请确保对应架构的构建结果目录存在
-    x86_64: frontend/release/linux-unpacked
-    ARM64:  frontend/release/linux-arm64-unpacked
+  - 编译操作已集成到spec文件中
+  - 此脚本仅执行rpmbuild命令
 EOF
 }
 
@@ -63,10 +60,6 @@ EOF
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --skip-frontend)
-                SKIP_FRONTEND=true
-                shift
-                ;;
             -h|--help)
                 show_help
                 exit 0
@@ -93,12 +86,6 @@ log_info "开始构建 DevStore RPM 包"
 log_info "项目根目录: $PROJECT_ROOT"
 log_info "构建目录: $BUILD_DIR"
 log_info "工作目录: $WORKSPACE_DIR"
-
-if [ "$SKIP_FRONTEND" = true ]; then
-    log_info "构建模式: 跳过前端构建"
-else
-    log_info "构建模式: 完整构建"
-fi
 
 # 检查必要的工具
 check_dependencies() {
@@ -157,291 +144,34 @@ get_version_from_spec() {
     echo "$version"
 }
 
-# 获取当前系统架构
-get_system_arch() {
-    local arch=$(uname -m)
-    case "$arch" in
-        x86_64)
-            echo "x64"
-            ;;
-        aarch64|arm64)
-            echo "arm64"
-            ;;
-        *)
-            log_error "不支持的架构: $arch"
-            exit 1
-            ;;
-    esac
-}
 
-# 获取RPM架构名称
-get_rpm_arch() {
-    local arch=$(uname -m)
-    case "$arch" in
-        x86_64)
-            echo "x86_64"
-            ;;
-        aarch64|arm64)
-            echo "aarch64"
-            ;;
-        *)
-            log_error "不支持的架构: $arch"
-            exit 1
-            ;;
-    esac
-}
 
-# 构建前端
-build_frontend() {
-    if [ "$SKIP_FRONTEND" = true ]; then
-        log_info "跳过前端构建，检查已有构建结果..."
-        
-        cd "$PROJECT_ROOT/frontend"
-        
-        # 获取当前架构以确定正确的目录名
-        local target_arch=$(get_system_arch)
-        local expected_dir=""
-        
-        if [ "$target_arch" = "arm64" ]; then
-            expected_dir="release/linux-arm64-unpacked"
-        else
-            expected_dir="release/linux-unpacked"
-        fi
-        
-        # 检查是否存在已构建的前端文件
-        if [ ! -d "$expected_dir" ]; then
-            log_error "未找到已构建的前端文件目录: $expected_dir"
-            log_error "请先运行完整构建或移除 --skip-frontend 选项"
-            exit 1
-        fi
-        
-        # 检查关键文件是否存在
-        if [ ! -f "$expected_dir/dev-store-app" ]; then
-            log_error "前端构建结果不完整，缺少主执行文件"
-            log_error "请重新运行完整构建"
-            exit 1
-        fi
-        
-        log_info "发现有效的前端构建结果，继续使用"
-        return 0
-    fi
-    
-    log_info "开始构建前端..."
-    
-    cd "$PROJECT_ROOT/frontend"
-    
-    # 获取当前架构
-    local target_arch=$(get_system_arch)
-    log_info "目标架构: $target_arch"
-    
-    # 设置Electron镜像
-    export ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
-    
-    # 安装依赖
-    log_info "安装前端依赖..."
-    npm install electron -D --registry=https://registry.npmmirror.com
-    npm install --registry=https://registry.npmmirror.com
-    
-    # 构建应用
-    log_info "构建前端应用..."
-    npm run build
-    
-    # 使用 electron-builder 构建 RPM 包，指定架构
-    log_info "构建 Electron 应用 ($target_arch)..."
-    
-    # 设置环境变量以确保正确的架构构建
-    export TARGET_ARCH=$target_arch
-    
-    # 根据架构选择正确的构建命令
-    if [ "$target_arch" = "arm64" ]; then
-        npx electron-builder --linux rpm --arm64
-    else
-        npx electron-builder --linux rpm --x64
-    fi
-    
-    # 检查构建结果（根据架构调整目录名）
-    local expected_dir=""
-    if [ "$target_arch" = "arm64" ]; then
-        expected_dir="release/linux-arm64-unpacked"
-    else
-        expected_dir="release/linux-unpacked"
-    fi
-    
-    if [ ! -d "$expected_dir" ]; then
-        log_error "前端构建失败，未找到 $expected_dir 目录"
-        # 列出实际生成的目录以便调试
-        log_info "实际生成的目录："
-        ls -la release/ || true
-        exit 1
-    fi
-    
-    log_info "前端构建完成"
-}
-
-# 准备后端文件
-prepare_backend() {
-    log_info "准备后端文件..."
-    
-    cd "$PROJECT_ROOT/backend"
-    
-    # 创建临时目录
-    local temp_backend="$BUILD_DIR/temp_backend"
-    rm -rf "$temp_backend"
-    mkdir -p "$temp_backend"
-    
-    # 复制后端文件到临时目录
-    cp -rf artifacts tasks constants dev_store utils manage.py mcp_manage.sh "$temp_backend/"
-    cp -rf services "$temp_backend/"
-    cp -rf configs "$temp_backend/"
-    
-    log_info "后端文件准备完成"
-}
-
-# 准备前端文件
-prepare_frontend() {
-    log_info "准备前端文件..."
-    
-    # 创建临时目录
-    local temp_frontend="$BUILD_DIR/temp_frontend"
-    rm -rf "$temp_frontend"
-    mkdir -p "$temp_frontend"
-    
-    # 获取当前架构以确定正确的目录名
-    local target_arch=$(get_system_arch)
-    local source_dir=""
-    
-    if [ "$target_arch" = "arm64" ]; then
-        source_dir="$PROJECT_ROOT/frontend/release/linux-arm64-unpacked"
-    else
-        source_dir="$PROJECT_ROOT/frontend/release/linux-unpacked"
-    fi
-    
-    # 检查源目录是否存在
-    if [ ! -d "$source_dir" ]; then
-        log_error "未找到前端构建结果目录: $source_dir"
-        log_info "可用的目录："
-        ls -la "$PROJECT_ROOT/frontend/release/" || true
-        exit 1
-    fi
-    
-    # 复制前端构建结果，并重命名为统一的目录名
-    cp -rf "$source_dir" "$temp_frontend/linux-unpacked"
-    
-    log_info "前端文件准备完成"
-}
-
-# 创建源码包
-create_source_package() {
-    log_info "创建源码包..."
+# 准备构建文件
+prepare_build_files() {
+    log_info "准备构建文件..."
     
     cd "$BUILD_DIR"
     
-    # 获取当前架构
-    local rpm_arch=$(get_rpm_arch)
-    log_info "目标架构: $rpm_arch"
-    
     # 获取版本号
     local version=$(get_version_from_spec)
-    log_info "从spec文件中读取的版本号: $version"
     
-    # 创建源码包目录
-    local source_dir="dev-store-$version-$rpm_arch"
-    rm -rf "$source_dir"
-    mkdir -p "$source_dir"
-    
-    # 复制前端文件
-    mkdir -p "$source_dir/opt/dev-store/app"
-    cp -rf temp_frontend/linux-unpacked/* "$source_dir/opt/dev-store/app/"
-    
-    # 复制后端文件
-    mkdir -p "$source_dir/var/lib/dev-store/src"
-    cp -rf temp_backend/artifacts temp_backend/tasks temp_backend/constants temp_backend/dev_store temp_backend/utils temp_backend/manage.py temp_backend/mcp_manage.sh "$source_dir/var/lib/dev-store/src/"
-    
-    mkdir -p "$source_dir/var/lib/dev-store/services"
-    cp -rf temp_backend/services/* "$source_dir/var/lib/dev-store/services/"
-    
-    mkdir -p "$source_dir/etc/dev-store"
-    cp -rf temp_backend/configs/* "$source_dir/etc/dev-store/"
-    
-    # 创建必要的目录
-    mkdir -p "$source_dir/var/log/dev-store"
-    mkdir -p "$source_dir/usr/bin"
-    mkdir -p "$source_dir/usr/share/applications"
-    mkdir -p "$source_dir/usr/share/icons/hicolor/256x256/apps"
-    mkdir -p "$source_dir/usr/share/icons/hicolor/128x128/apps"
-    mkdir -p "$source_dir/usr/share/icons/hicolor/64x64/apps"
-    mkdir -p "$source_dir/usr/share/icons/hicolor/48x48/apps"
-    mkdir -p "$source_dir/usr/share/icons/hicolor/32x32/apps"
-    mkdir -p "$source_dir/usr/share/icons/hicolor/16x16/apps"
-    mkdir -p "$source_dir/usr/lib/systemd/system"
-    
-    # 创建启动脚本
-    cat > "$source_dir/usr/bin/dev-store" << 'EOF'
-#!/bin/bash
-set -e
-
-# 切换到项目目录
-cd /var/lib/dev-store/src
-
-# 启动服务器
-python3 manage.py runserver 0.0.0.0:28080
-EOF
-
-    # 设置脚本可执行权限
-    chmod +x "$source_dir/usr/bin/dev-store"
-    
-    # 复制systemd服务文件
-    cp "$BUILD_DIR/dev-store.service" "$source_dir/usr/lib/systemd/system/"
-    
-    # 创建桌面文件
-    cat > "$source_dir/usr/share/applications/dev-store.desktop" << 'EOF'
-[Desktop Entry]
-Name=DevStore
-Name[zh_CN]=开发者商店
-Name[en_US]=DevStore
-Name[en]=DevStore
-Comment=Developer Software Store (including MCP services and OEDP plugins)
-Comment[zh_CN]=面向开发者的软件商店(包括MCP服务、OEDP插件)
-Comment[en_US]=Developer Software Store (including MCP services and OEDP plugins)
-Comment[en]=Developer Software Store (including MCP services and OEDP plugins)
-Exec=/opt/dev-store/app/dev-store-app
-Icon=dev-store
-Type=Application
-Categories=Development;
-StartupWMClass=dev-store-app
-EOF
-    
-    # 复制图标文件到多个尺寸目录
-    if [ -f "$PROJECT_ROOT/frontend/src/assets/logo.png" ]; then
-        # 复制到各个尺寸目录（假设logo.png是合适的尺寸）
-        cp "$PROJECT_ROOT/frontend/src/assets/logo.png" "$source_dir/usr/share/icons/hicolor/256x256/apps/dev-store.png"
-        cp "$PROJECT_ROOT/frontend/src/assets/logo.png" "$source_dir/usr/share/icons/hicolor/128x128/apps/dev-store.png"
-        cp "$PROJECT_ROOT/frontend/src/assets/logo.png" "$source_dir/usr/share/icons/hicolor/64x64/apps/dev-store.png"
-        cp "$PROJECT_ROOT/frontend/src/assets/logo.png" "$source_dir/usr/share/icons/hicolor/48x48/apps/dev-store.png"
-        cp "$PROJECT_ROOT/frontend/src/assets/logo.png" "$source_dir/usr/share/icons/hicolor/32x32/apps/dev-store.png"
-        cp "$PROJECT_ROOT/frontend/src/assets/logo.png" "$source_dir/usr/share/icons/hicolor/16x16/apps/dev-store.png"
-        log_info "图标文件已复制到多个尺寸目录"
-    else
-        log_warn "未找到图标文件: $PROJECT_ROOT/frontend/src/assets/logo.png"
+    # 检查源码包是否存在（源码包无需区分架构）
+    local tarball_name="dev-store-$version.tar.gz"
+    if [ ! -f "$tarball_name" ]; then
+        log_error "未找到源码包: $tarball_name"
+        log_error "请先运行 pack.sh 创建源码包"
+        exit 1
     fi
     
-    # 复制项目根目录的文档和许可证文件
-    cp "$PROJECT_ROOT/README.md" "$source_dir/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/README.en.md" "$source_dir/" 2>/dev/null || true
-    cp "$PROJECT_ROOT/LICENSE" "$source_dir/" 2>/dev/null || true
+    log_info "发现源码包: $tarball_name"
     
-    # 创建tar.gz源码包（包含架构信息）
-    local tarball_name="dev-store-$version-$rpm_arch.tar.gz"
-    tar -czf "$tarball_name" "$source_dir"
-    log_info "已创建源码包: $tarball_name"
-    
-    # 移动到RPM构建目录
-    mv "$tarball_name" "$WORKSPACE_DIR/rpmbuild/SOURCES/"
+    # 复制源码包到RPM构建目录
+    cp "$tarball_name" "$WORKSPACE_DIR/rpmbuild/SOURCES/"
     
     # 复制spec文件
     cp "dev-store.spec" "$WORKSPACE_DIR/rpmbuild/SPECS/"
     
-    log_info "源码包创建完成"
+    log_info "构建文件准备完成"
 }
 
 # 构建RPM包
@@ -461,28 +191,18 @@ build_rpm() {
     find "$WORKSPACE_DIR/rpmbuild/SRPMS" -name "*.rpm" -type f
 }
 
-# 清理临时文件
-cleanup() {
-    log_info "清理临时文件..."
-    
-    cd "$BUILD_DIR"
-    rm -rf temp_frontend temp_backend
-    
-    log_info "清理完成"
-}
-
 # 主函数
 main() {
     check_dependencies
     setup_rpmbuild
-    build_frontend
-    prepare_backend
-    prepare_frontend
-    create_source_package
+    prepare_build_files
     build_rpm
-    cleanup
     
     log_info "DevStore RPM包构建完成！"
+    log_info ""
+    log_info "使用方法："
+    log_info "1. 先运行: ./pack.sh    # 打包源码"
+    log_info "2. 再运行: ./build.sh   # 构建RPM包"
 }
 
 # 执行主函数
