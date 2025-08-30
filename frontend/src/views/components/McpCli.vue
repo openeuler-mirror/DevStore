@@ -44,14 +44,23 @@ const {t} = useI18n();
 
 const props = withDefaults(
   defineProps<{
-    status: 'not yet' | 'in process' | 'success';
+    status?: 'not yet' | 'in process' | 'success';
     cmdList: string[];
-    mcpJson: string;
+    mcpJson: Record<string, any>;
+    // 根据错误信息补充缺失的属性
+    keyValue?: string;
+    downloadStatus?: string; 
+    actionList?: string[];
+    getDetail?: Function;
   }>(),
   {
     status: 'not yet',
     cmdList: () => [],
-    mcpJson: '',
+    mcpJson: () => ({}), 
+    keyValue: '',
+    downloadStatus: 'pending',
+    actionList: () => [],
+    getDetail: undefined,
   }
 );
 

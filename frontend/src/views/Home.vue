@@ -60,12 +60,12 @@
             <div v-else-if="searchValue !== '' && activeTab === tab.name" class="label-sum">{{ count }}</div>
           </template>
           <!-- 子组件：卡片列表 -->
-          <grid-display :tag="tab.name as Tag" :item-list="itemList" />
+            <grid-display :tag="tab.name as Tag" :item-list="itemList" />
         </el-tab-pane>
       </el-tabs>
       <!-- 分页 -->
       <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" class="pagination"
-                     :page-sizes="[10, 20, 30]" :total="tag === 'mcp' ? mcpCount : oedpCount"
+                     :page-sizes="[10, 20, 30]" :total="count"
                      layout="total, sizes, prev, pager, next, jumper"
                      @size-change="handleSizeChange" @current-change="handleCurrentChange" />
     </div>
@@ -81,8 +81,10 @@ import GridDisplay from '@/views/components/GridDisplay.vue';
 import { queryList, Tag, type QueryListResponse } from '@/api/index.ts';
 import { eventBus, EVENT_TYPES } from '@/utils/eventBus';
 import { updateRouteQuery } from '@/utils/index';
+import { Search } from '@element-plus/icons-vue';
 
 const route = useRoute();
+const showList = ref(true);
 const router = useRouter();
 const {t} = useI18n();
 
@@ -101,12 +103,13 @@ const mcpCount = ref<number>(0);
 const oedpCount = ref<number>(0);
 
 // 查询首页列表信息
-const itemList = ref();
+const itemList = ref([]);
 // 分页 - 从URL参数初始化
 const currentPage = ref(parseInt(route.query.curPage as string) || 1);
 const pageSize = ref(parseInt(route.query.pageSize as string) || 10);
 // 右侧 tab - 从URL参数初始化
 const activeSortTab = ref((route.query.sort as string) || 'rec');
+
 const getList = async () => {
   try {
     const res: QueryListResponse = await queryList({
@@ -116,10 +119,17 @@ const getList = async () => {
       searchValue: searchValue.value,
       sort: activeSortTab.value as 'recommended' | 'newest',
     });
+    
     if (res && res.is_success && res.data) {
       itemList.value = res.data.results;
       mcpCount.value = res.data.mcp_count;
       oedpCount.value = res.data.oedp_count;
+      
+      // 添加：正确更新count变量
+      count.value = searchValue.value && searchValue.value.trim() !== ''
+        ? res.data.search_count || 0
+        : tag.value === 'mcp' ? res.data.mcp_count : res.data.oedp_count;
+        
     } else if (res) {
       console.log(res.message);
     }
@@ -151,13 +161,23 @@ const handleCurrentChange = async (val: number) => {
 
 // 仅在 搜索 且 有搜索值 时，更新 searchValue，并查询
 const handleSearch = async () => {
-  searchInput.value.trim();
+  searchInput.value = searchInput.value.trim();
   if (searchInput.value !== '') {
     searchValue.value = searchInput.value;
     currentPage.value = 1; // 搜索时重置到第一页
     // 更新URL参数
     await updateRouteQuery(router, route, {
       searchValue: searchInput.value,
+      curPage: 1
+    });
+    await getList();
+  }
+  else {
+    // 添加：处理清空搜索的情况
+    searchValue.value = '';
+    currentPage.value = 1;
+    await updateRouteQuery(router, route, {
+      searchValue: undefined, // 移除搜索参数
       curPage: 1
     });
     await getList();

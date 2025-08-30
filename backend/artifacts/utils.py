@@ -15,7 +15,11 @@
 import os
 import subprocess
 import yaml
+import operator
+from functools import reduce
 from django.db import connection
+from django.db.models import Q, Case, When, Value, IntegerField,FloatField,F
+from django.db.models.functions import Length
 from tasks.models import Task
 from artifacts.models import MCPServer
 from artifacts.serializers import PluginItemSerializer
@@ -24,6 +28,18 @@ from utils.common import is_process_running
 from utils.cmd_executor import CommandExecutor
 from utils.logger import init_log
 logger = init_log('run.log')
+
+
+# 权重配置
+SEARCH_WEIGHTS = {
+    'exact_match': 10.0,
+    'phrase_match': 5.0,
+    'name_field': 3.0,
+    'position_bonus': 3.0,
+    'length_factor': 2.0,
+    'coverage': 1.5
+}
+
 
 
 def clear_table(table_name):
@@ -149,3 +165,141 @@ def check_system_rpm_installed(package_name: str) -> bool:
     except Exception:
         return False
 
+def calculate_weighted_relevance(queryset, search_value, weights=None):
+    """基于权重的相关性算法"""
+    if not search_value:
+        return queryset.annotate(relevance_score=Value(0.0, output_field=FloatField()))
+    
+    weights = weights or SEARCH_WEIGHTS
+    search_terms = [term.strip() for term in search_value.lower().split() if term.strip()]
+    full_search = search_value.lower().strip()
+    
+    annotations = {}
+    annotations.update(_build_basic_factors(full_search))
+    annotations.update(_build_position_factor(full_search, search_terms))
+    annotations.update(_build_complex_factors(search_terms)) 
+    annotations['relevance_score'] = _build_relevance_score(weights)
+    
+    return queryset.annotate(**annotations)
+
+def _build_basic_factors(full_search):
+    """构建基础匹配因子"""
+    return {
+        'exact_match_factor': Case(
+            When(name__iexact=full_search, then=Value(1.0)),
+            default=Value(0.0), output_field=FloatField()
+        ),
+        'phrase_match_factor': Case(
+            When(name__icontains=full_search, then=Value(1.0)),
+            When(description__icontains=full_search, then=Value(0.7)),
+            default=Value(0.0), output_field=FloatField()
+        ),
+        'length_factor': Case(
+            When(name__icontains=full_search, 
+                 then=Value(1.0) / (Length('name') / len(full_search))),
+            default=Value(0.0), output_field=FloatField()
+        )
+    }
+
+def _build_position_factor(full_search, search_terms):
+    """构建位置匹配因子 """
+    position_kwargs = {
+        f'name_startswith_{i}': Case(
+            When(name__istartswith=term, then=Value(0.8 / (i + 1))),
+            default=Value(0.0), output_field=FloatField()
+        ) for i, term in enumerate(search_terms)
+    }
+    
+    position_factor = Case(
+        When(name__istartswith=full_search, then=Value(1.0)),
+        When(name__icontains=full_search, then=Value(0.6)),
+        **position_kwargs,
+        default=Value(0.0), output_field=FloatField()
+    )
+    
+    return {'position_factor': position_factor}
+
+def _build_complex_factors(search_terms):
+    """构建复杂匹配因子"""
+    if not search_terms:
+        return {
+            'word_match_factor': Value(0.0, output_field=FloatField()),
+            'coverage_factor': Value(0.0, output_field=FloatField())
+        }
+    
+    # 构建单词匹配的Case列表
+    word_cases = _build_word_cases(search_terms)
+
+    total_score = sum(word_cases)
+    max_possible_score = len(search_terms) * 1.0
+    word_match_factor = total_score / max_possible_score if max_possible_score > 0 else Value(0.0)
+
+    coverage_cases = _build_coverage_cases(search_terms)
+    coverage_factor = sum(coverage_cases) / len(search_terms)
+    
+    return {
+        'word_match_factor': word_match_factor,
+        'coverage_factor': coverage_factor
+    }
+
+def _build_word_cases(search_terms):
+    """构建单词匹配案例"""
+    word_cases = []
+    for term in search_terms:
+        case = Case(
+            When(name__icontains=term, then=Value(1.0)),
+            When(description__icontains=term, then=Value(0.5)),
+            default=Value(0.0), output_field=FloatField()
+        )
+        word_cases.append(case)
+    return word_cases
+
+def _build_coverage_cases(search_terms):
+    """构建覆盖率案例"""
+    coverage_cases = []
+    for term in search_terms:
+        case = Case(
+            When(Q(name__icontains=term) | Q(description__icontains=term), 
+                 then=Value(1.0)),
+            default=Value(0.0), output_field=FloatField()
+        )
+        coverage_cases.append(case)
+    return coverage_cases
+
+def _build_relevance_score(weights):
+    """构建最终相关性得分"""
+    return (
+        F('exact_match_factor') * weights['exact_match'] +
+        F('phrase_match_factor') * weights['phrase_match'] +
+        F('position_factor') * weights['position_bonus'] +  
+        F('word_match_factor') * weights['name_field'] +
+        F('coverage_factor') * weights['coverage'] +
+        F('length_factor') * weights['length_factor']
+    )
+
+def process_search_with_relevance(queryset, search_value, sort='rec'):
+    """处理多关键词搜索"""
+    
+    if search_value:
+        # 构建搜索条件：任意词匹配名称或描述
+        search_terms = [term.strip() for term in search_value.split() if term.strip()]
+        conditions = []
+        
+        for term in search_terms:
+            conditions.append(Q(name__icontains=term) | Q(description__icontains=term))
+        
+        # 使用OR连接所有条件
+        if conditions:
+            search_filter = reduce(operator.or_, conditions)
+            queryset = queryset.filter(search_filter)
+        
+        # 计算相关性
+        queryset = calculate_weighted_relevance(queryset, search_value)
+    else:
+        queryset = queryset.annotate(relevance_score=Value(0.0, output_field=FloatField()))
+    
+    # 排序
+    if sort == 'new':
+        return queryset.order_by('-relevance_score', '-updated_at') if search_value else queryset.order_by('-updated_at')
+    else:
+        return queryset.order_by('-relevance_score', 'name') if search_value else queryset.order_by('name')

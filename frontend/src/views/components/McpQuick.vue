@@ -121,17 +121,34 @@ const props = withDefaults(
     name: string;
     installStatus: 'not yet' | 'in process' | 'success';
     appList: [] | {'name': string; 'status': 'added' | 'removed';}[];
-    mcpJson: string;
+    mcpJson: Record<string, any>;
     addApp: Function;
     deleteApp: Function;
     installPackage: Function;
     uninstallPackage: Function;
+    // 根据错误信息补充缺失的属性
+    keyValue?: string;
+    cmdList?: string[];
+    downloadStatus?: string;
+    actionList?: string[];
+    getDetail?: Function;
   }>(),
   {
     name: 'mcp',
     installStatus: 'not yet',
     appList: () => [],
-    mcpJson: '',
+    mcpJson: () => ({}), 
+    // 为Function类型添加默认值
+    addApp: () => {},
+    deleteApp: () => {},
+    installPackage: () => {},
+    uninstallPackage: () => {},
+    // 为额外属性添加默认值
+    keyValue: '',
+    cmdList: () => [],
+    downloadStatus: 'pending',
+    actionList: () => [],
+    getDetail: () => {},
   }
 );
 

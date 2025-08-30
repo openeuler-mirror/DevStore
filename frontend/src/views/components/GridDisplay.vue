@@ -16,7 +16,7 @@
     <div class="display-list">
       <!-- 展示 -->
       <div v-show="itemList.length > 0" class="display-list-content">
-        <div v-for="item in itemList" :key="item.name" class="display-card" @click="goToDetail(item.key)">
+        <div v-for="item in itemList" :key="`${item.name}-${item.version}`" class="display-card" @click="goToDetail(item.key)">
           <div class="display-card-top">
             <!-- 上：图标 -->
             <div class="display-card-icon">
