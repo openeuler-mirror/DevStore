@@ -12,7 +12,7 @@
 
 <template>
   <!-- 首页 -->
-  <div class="home">
+  <div class="home" :key="renderKey">
     <!-- 顶部数据展示 -->
     <div class="statics">
       <div class="left-div">{{ t('home.mcpServer') }}<div class="server-num">{{ mcpCount }}</div></div>
@@ -60,7 +60,7 @@
             <div v-else-if="searchValue !== '' && activeTab === tab.name" class="label-sum">{{ count }}</div>
           </template>
           <!-- 子组件：卡片列表 -->
-            <grid-display :tag="tab.name as Tag" :item-list="itemList" />
+            <grid-display :tag="tab.name as Tag" :item-list="itemList" :key="`grid-${renderKey}`" />
         </el-tab-pane>
       </el-tabs>
       <!-- 分页 -->
@@ -71,9 +71,8 @@
     </div>
   </div>
 </template>
-
 <script lang="ts" setup>
-import { ref, watch, onMounted, onUnmounted, computed, onBeforeUnmount } from 'vue';
+import { ref, watch, onMounted, onUnmounted, computed, onBeforeUnmount, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { throttle } from 'underscore';
@@ -88,20 +87,20 @@ const showList = ref(true);
 const router = useRouter();
 const {t} = useI18n();
 
+// 强制渲染key
+const renderKey = ref(0);
+
 // 从路由获取当前 tag
 const tag = computed(() => route.query.tag ?? 'mcp');
-
 // 搜索框里显示的值 - 从URL参数初始化
 const searchInput = ref((route.query.searchValue as string) || '');
 // 查询时实际使用的搜索值 - 从URL参数初始化
 const searchValue = ref((route.query.searchValue as string) || '');
 // 搜索结果个数
 const count = ref<number>(0);
-
 // 个数
 const mcpCount = ref<number>(0);
 const oedpCount = ref<number>(0);
-
 // 查询首页列表信息
 const itemList = ref([]);
 // 分页 - 从URL参数初始化
@@ -125,11 +124,15 @@ const getList = async () => {
       mcpCount.value = res.data.mcp_count;
       oedpCount.value = res.data.oedp_count;
       
-      // 添加：正确更新count变量
+      // 正确更新count变量
       count.value = searchValue.value && searchValue.value.trim() !== ''
         ? res.data.search_count || 0
         : tag.value === 'mcp' ? res.data.mcp_count : res.data.oedp_count;
         
+      //强制触发视图更新
+      renderKey.value++;
+      await nextTick();
+      
     } else if (res) {
       console.log(res.message);
     }
