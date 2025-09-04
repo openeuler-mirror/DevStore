@@ -5,6 +5,19 @@
 CALL_USER=""
 CALL_USER_HOME=""
 
+
+fix_config_permissions() {
+    local user="$1"
+    local user_home="$2"
+    
+    # 修复用户配置目录权限
+    if [[ -d "$user_home/.config" ]]; then
+        # 使用 chown 修复所有者
+        chown -R "$user:$user" "$user_home/.config" 2>/dev/null || true
+    fi
+}
+
+
 # 更新配置路径的函数
 update_config_paths() {
     APP_CONFIG_PATHS=(
@@ -26,6 +39,9 @@ set_user_info() {
     if [[ -z "$CALL_USER_HOME" ]]; then
         fail "无法获取用户 $CALL_USER 的家目录"
     fi
+
+    fix_config_permissions "$CALL_USER" "$CALL_USER_HOME"
+
     # 更新配置路径
     update_config_paths
 }
