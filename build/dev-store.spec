@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           dev-store
-Version:        1.0.0
+Version:        1.0.1
 Release:        1
 Summary:        Development Store Management System
 
@@ -35,6 +35,12 @@ BuildRequires:  rubygems
 BuildRequires:  gcc
 BuildRequires:  gcc-c++
 BuildRequires:  make
+
+# 排除Electron应用目录的自动依赖分析
+%global __provides_exclude_from ^/opt/dev-store/app/.*$
+%global __requires_exclude_from ^/opt/dev-store/app/.*$
+# 排除特定的Electron应用共享库依赖
+%global __requires_exclude ^(libffmpeg\.so|libEGL\.so|libGLESv2\.so|libvulkan\.so|libvk_swiftshader\.so).*$
 
 %description
 DevStore is a comprehensive development store management system that provides
@@ -260,13 +266,23 @@ fi
 # 重新加载systemd配置
 systemctl daemon-reload
 
-echo "DevStore服务已安装。"
-echo "使用以下命令管理服务："
-echo "  启用自启动: systemctl enable dev-store"
-echo "  启动服务: systemctl start dev-store"
-echo "  停止服务: systemctl stop dev-store"
-echo "  查看状态: systemctl status dev-store"
-echo "  查看日志: journalctl -u dev-store -f"
+# Enable and start dev-store service (failure won't affect installation)
+systemctl enable dev-store.service 2>/dev/null || {
+    echo "Warning: Failed to enable dev-store service auto-start. Please run manually: systemctl enable dev-store"
+}
+
+systemctl start dev-store.service 2>/dev/null || {
+    echo "Warning: Failed to start dev-store service. Please run manually: systemctl start dev-store"
+    echo "Possible reasons: Dependencies not ready or configuration needs adjustment"
+}
+
+echo "DevStore service has been installed."
+echo "Use the following commands to manage the service:"
+echo "  Enable auto-start: systemctl enable dev-store"
+echo "  Start service: systemctl start dev-store"
+echo "  Stop service: systemctl stop dev-store"
+echo "  Check status: systemctl status dev-store"
+echo "  View logs: journalctl -u dev-store -f"
 
 %preun
 # 卸载前脚本
@@ -282,10 +298,15 @@ fi
 if [ $1 -eq 0 ]; then
     # 完全卸载时执行
     systemctl daemon-reload
-    echo "DevStore服务已完全移除。"
+    echo "DevStore service has been completely removed."
 fi
 
 %changelog
+* Tue Sep 2 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.1-1
+- Support search functionality
+- Fix the issue where the list is empty when returning to the homepage from the details page
+- Auto-enable and start dev-store service after installation
+- Add error handling to ensure service startup failures don't affect package installation
 * Tue Aug 19 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.0-1
 - Initial release of DevStore
 - Includes frontend Electron application
