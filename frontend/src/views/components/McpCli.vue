@@ -67,7 +67,7 @@ const props = withDefaults(
 // 复制到剪切板
 const copyToClipboard = async () => {
   try {
-    await navigator.clipboard.writeText(props.mcpJson);
+    await navigator.clipboard.writeText(JSON.stringify(props.mcpJson, null, 2)); 
   } catch (err) {
     console.error('复制失败:', err);
   }
