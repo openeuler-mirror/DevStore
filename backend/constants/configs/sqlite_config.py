@@ -9,27 +9,33 @@
 # IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
 # PURPOSE.
 # See the Mulan PSL v2 for more details.
-# Create: 2025-07-18
+# Create: 2025-10-21
 # ======================================================================================================================
 
-import sys
+import os
+from constants.paths import SQLITE_DB_FILE
 
-if "/var/lib/dev-store/src" not in sys.path:
-    sys.path.append("/var/lib/dev-store/src")
-
-from constants.paths import MARIADB_JSON_FILE
-from utils.cipher import CustomCipher
-from utils.file_handler.json_handler import JSONHandler
+__all__ = ['get_settings_sqlite_config']
 
 
-if __name__ == '__main__':
-    try:
-        plaintext = sys.argv[1]
-        custom_cipher = CustomCipher()
-        ciphertext_data = custom_cipher.encrypt_plaintext(plaintext)
-        json_handler = JSONHandler(file_path=MARIADB_JSON_FILE, should_print=True)
-        json_handler.data.update(ciphertext_data)
-        json_handler.save()
-    except Exception as ex:
-        print(ex)
-        sys.exit(1)
+def get_settings_sqlite_config():
+    """
+    获取SQLite数据库配置
+    """
+    # 确保数据库文件所在目录存在
+    db_dir = os.path.dirname(SQLITE_DB_FILE)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, mode=0o755, exist_ok=True)
+    
+    database_config = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': SQLITE_DB_FILE,
+        'OPTIONS': {
+            'timeout': 20,
+        },
+        'TEST': {
+            'NAME': ':memory:',
+        }
+    }
+    
+    return database_config

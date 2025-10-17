@@ -5,4 +5,4 @@ set -e
 cd /var/lib/dev-store/src
 
 # 启动服务器
-python3 manage.py runserver 0.0.0.0:28080
+/usr/bin/python3 manage.py runserver 127.0.0.1:28080

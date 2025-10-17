@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-from constants.configs.mariadb_config import get_settings_mariadb_config
+from constants.configs.sqlite_config import get_settings_sqlite_config
 from utils.time import get_time_zone
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -78,7 +78,7 @@ WSGI_APPLICATION = 'dev_store.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-config_info = get_settings_mariadb_config()
+config_info = get_settings_sqlite_config()
 DATABASES = {
     'default': config_info
 }

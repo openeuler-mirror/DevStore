@@ -17,12 +17,13 @@ import os
 
 # 配置文件目录
 CONFIG_DIR = '/etc/dev-store'
-# /etc/dev-store/mariadb/mariadb.conf MariaDB 配置文件路径
-MARIADB_CONFIG_FILE = os.path.join(CONFIG_DIR, 'mariadb', 'mariadb.conf')
-# /etc/dev-store/mariadb/mariadb_ciphertext_data.json MariaDB 密文数据 json 文件
-MARIADB_JSON_FILE = os.path.join(CONFIG_DIR, 'mariadb', 'mariadb_ciphertext_data.json')
 # /etc/dev-store/task_scheduler.conf 任务调度器配置文件路径
 TASK_SCHEDULER_CONFIG_FILE = os.path.join(CONFIG_DIR, 'task_scheduler.conf')
+
+# 数据库文件目录
+DB_DIR = '/var/lib/dev-store/db'
+# /var/lib/dev-store/db/dev_store.db SQLite 数据库文件路径
+SQLITE_DB_FILE = os.path.join(DB_DIR, 'dev_store.db')
 
 # 日志目录
 LOG_DIR = '/var/log/dev-store'
