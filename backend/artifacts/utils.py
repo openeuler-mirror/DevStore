@@ -46,7 +46,10 @@ def clear_table(table_name):
     """清空指定数据库表并重置自增主键"""
     logger.info(f"Start to clear table '{table_name}'")
     with connection.cursor() as cursor:
-        cursor.execute(f"TRUNCATE TABLE {table_name}")
+        # SQLite不支持TRUNCATE，使用DELETE FROM代替
+        cursor.execute(f"DELETE FROM {table_name}")
+        # 重置SQLite的自增序列
+        cursor.execute(f"DELETE FROM sqlite_sequence WHERE name='{table_name}'")
 
 
 def set_plugin_action_status(action_list, action_name, status):

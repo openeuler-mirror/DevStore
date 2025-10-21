@@ -11,19 +11,18 @@ URL:            https://gitee.com/openeuler/DevStore
 Source0:        %{name}-%{version}.tar.gz
 
 # 依赖包
-Requires:       python3-django-rest-framework
-Requires:       mariadb-server
-Requires:       expect
+Requires:       systemd
 Requires:       dnf-plugins-core
+Requires:       desktop-file-utils
+Requires:       gtk-update-icon-cache
 Requires:       python3
-Requires:       python3-mysqlclient
+Requires:       python3-django-rest-framework
 Requires:       python3-concurrent-log-handler
 Requires:       python3-cryptography
 Requires:       python3-Django
 Requires:       python3-pyyaml
 Requires:       python3-psutil
 Requires:       python3-zstandard
-Requires:       systemd
 
 # 构建依赖
 BuildRequires:  rpm-build
@@ -111,6 +110,7 @@ cd ..
 mkdir -p %{buildroot}/opt/dev-store/app
 mkdir -p %{buildroot}/var/lib/dev-store/src
 mkdir -p %{buildroot}/var/lib/dev-store/services
+mkdir -p %{buildroot}/var/lib/dev-store/db
 mkdir -p %{buildroot}/etc/dev-store
 mkdir -p %{buildroot}/var/log/dev-store
 mkdir -p %{buildroot}/usr/bin
@@ -224,6 +224,9 @@ find %{buildroot}/var/lib/dev-store/src -name "*.sh" -exec chmod 755 {} \;
 # 日志目录
 %attr(755,root,root) /var/log/dev-store
 
+# 数据库目录
+%attr(755,root,root) /var/lib/dev-store/db
+
 # 启动脚本
 %attr(755,root,root) /usr/bin/dev-store
 
@@ -249,9 +252,10 @@ chown -R root:root /var/log/dev-store
 chmod 755 /var/log/dev-store
 
 # 设置数据库目录权限
-mkdir -p /var/lib/dev-store
+mkdir -p /var/lib/dev-store/db
 chown -R root:root /var/lib/dev-store
 chmod 755 /var/lib/dev-store
+chmod 755 /var/lib/dev-store/db
 
 # 更新桌面数据库
 if command -v update-desktop-database >/dev/null 2>&1; then
@@ -266,7 +270,7 @@ fi
 # 重新加载systemd配置
 systemctl daemon-reload
 
-# Enable and start dev-store service (failure won't affect installation)
+# 启动dev-store服务（失败不影响安装）
 systemctl enable dev-store.service 2>/dev/null || {
     echo "Warning: Failed to enable dev-store service auto-start. Please run manually: systemctl enable dev-store"
 }
