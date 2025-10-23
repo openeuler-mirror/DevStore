@@ -50,20 +50,30 @@ class ArtifactViewSet(viewsets.GenericViewSet):
         logger.info("==== API: [POST] /v1.0/artifacts/sync/ ====")
         
         # 使用PluginMethods同步插件信息
-        result = PluginMethods.sync_plugins()
-        if not result['is_success']:
-            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
+        plugin_result = PluginMethods.sync_plugins()
+        plugin_success = plugin_result['is_success']
+        
         # 使用MCPMethods同步MCP服务信息
-        result = MCPMethods.sync_mcps()
-        if not result['is_success']:
-            return Response(result, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-        # 仅返回调用结果
-        data_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        msg = "Sync data successfully."
-        logger.info(msg)
-        return Response({'is_success': True, 'message': msg, 'time': data_time}, status=status.HTTP_200_OK)
+        mcp_result = MCPMethods.sync_mcps()
+        mcp_success = mcp_result['is_success']
+        
+        # 只要插件或MCP服务任一同步成功，就返回成功
+        if plugin_success or mcp_success:
+            data_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            msg = "Sync data successfully."
+            if plugin_success and mcp_success:
+                msg = "Both plugin and MCP service data synced successfully."
+            elif plugin_success:
+                msg = "Plugin data synced successfully (MCP service sync failed)."
+            elif mcp_success:
+                msg = "MCP service data synced successfully (plugin sync failed)."
+            logger.info(msg)
+            return Response({'is_success': True, 'message': msg, 'time': data_time}, status=status.HTTP_200_OK)
+        else:
+            # 如果两者都失败，返回错误
+            msg = "Both plugin and MCP service sync failed."
+            logger.error(msg)
+            return Response({'is_success': False, 'message': msg}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
     @action(methods=['POST'], detail=False)

@@ -48,22 +48,38 @@ class PluginMethods:
     @staticmethod
     def sync_plugins():
         """同步插件信息到数据库"""
-        update_result, msg = PluginMethods._update_plugin_info()
-        if not update_result:
-            return {'is_success': False, 'message': msg}
-        plugin_data, msg = PluginMethods._read_plugin_info()
-        if not plugin_data:
-            return {'is_success': False, 'message': msg}
+        try:
+            update_result, msg = PluginMethods._update_plugin_info()
+            if not update_result:
+                # 更新失败时清空数据库
+                clear_table(OEDPPlugin._meta.db_table)
+                return {'is_success': False, 'message': msg}
+            
+            plugin_data, msg = PluginMethods._read_plugin_info()
+            if not plugin_data:
+                # 读取失败时清空数据库
+                clear_table(OEDPPlugin._meta.db_table)
+                return {'is_success': False, 'message': msg}
 
-        # 将插件的信息存入数据库中
-        serializer = PluginBulkCreateSerializer(data=plugin_data, many=True)
-        clear_table(OEDPPlugin._meta.db_table)
-        if not serializer.is_valid():
-            logger.error(f"Failed to validate plugin data, errors: {serializer.errors}")
-            return {'is_success': False, 'message': serializer.errors}
-        plugins = serializer.save()
-        logger.info("Store plugin data to database successfully.")
-        return {'is_success': True, 'message': "Sync plugin data successfully."}
+            # 插件解析过程可能耗时，因此数据库清理在插件解析之后，避免出现较长空窗期
+            clear_table(OEDPPlugin._meta.db_table)
+            
+            # 数据序列化并验证
+            serializer = PluginBulkCreateSerializer(data=plugin_data, many=True)
+            if not serializer.is_valid():
+                logger.error(f"Failed to validate plugin data, errors: {serializer.errors}")
+                return {'is_success': False, 'message': serializer.errors}
+            
+            # 写入新数据
+            plugins = serializer.save()
+            logger.info("Store plugin data to database successfully.")
+            return {'is_success': True, 'message': "Sync plugin data successfully."}
+            
+        except Exception as e:
+            logger.error(f"Sync plugins failed: {str(e)}")
+            # 发生异常时清空数据库
+            clear_table(OEDPPlugin._meta.db_table)
+            return {'is_success': False, 'message': f'Sync failed: {str(e)}'}
 
     @staticmethod
     def download_plugin(key: str):
