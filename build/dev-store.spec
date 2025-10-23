@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           dev-store
-Version:        1.0.2
+Version:        1.0.3
 Release:        1
 Summary:        Development Store Management System
 
@@ -306,6 +306,9 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Thu Oct 23 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.3-1
+- Replace MariaDB with SQLite database, optimize initialization process for faster startup
+- Optimize cleanup and write processes during data synchronization exceptions
 * Sat Sep 13 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.2-1
 - Fix JSON copy issue on MCP details page
 * Tue Sep 2 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.1-1
