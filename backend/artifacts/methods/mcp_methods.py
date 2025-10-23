@@ -39,18 +39,23 @@ class MCPMethods:
     @staticmethod
     def sync_mcps() -> Dict[str, Any]:
         """同步MCP服务信息"""
-        try:           
+        try:
             mcp_data, message = MCPMethods._read_mcp_info()
             if mcp_data is None:
+                # 读取失败时清空数据库
+                clear_table(MCPServer._meta.db_table)
                 return {'is_success': False, 'message': message}
-
+            
+            # MCP解析过程可能耗时，因此数据库清理在MCP解析之后，避免出现较长空窗期
             clear_table(MCPServer._meta.db_table)
             
             if mcp_data:
+                # 数据序列化并验证
                 serializer = MCPBulkCreateSerializer(data=mcp_data, many=True)
                 if not serializer.is_valid():
                     return {'is_success': False, 'message': serializer.errors}
                 
+                # 写入新数据
                 mcps = serializer.save()
                 msg = f"Successfully synced {len(mcps)} MCP packages"
             else:
@@ -60,6 +65,8 @@ class MCPMethods:
             
         except Exception as e:
             logger.error(f"Sync MCP failed: {str(e)}")
+            # 发生异常时清空数据库
+            clear_table(MCPServer._meta.db_table)
             return {'is_success': False, 'message': f'Sync failed: {str(e)}'}
 
     @staticmethod
