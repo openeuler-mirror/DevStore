@@ -21,8 +21,9 @@ fix_config_permissions() {
 # 更新配置路径的函数
 update_config_paths() {
     APP_CONFIG_PATHS=(
-        ["DeepChat"]="$CALL_USER_HOME/.config/DeepChat/mcp-settings.json"
+        ["PolyMind"]="$CALL_USER_HOME/.config/PolyMind/mcp-settings.json"
         ["roo-code"]="$CALL_USER_HOME/.config/VSCodium/User/globalStorage/rooveterinaryinc.roo-cline/settings/mcp_settings.json"
+        ["DeepChat"]="$CALL_USER_HOME/.config/DeepChat/mcp-settings.json"
     )
 }
 
@@ -49,6 +50,7 @@ set_user_info() {
 declare -A APP_CONFIG_PATHS
 
 declare -A APP_DISPLAY_NAMES=(
+    ["PolyMind"]="PolyMind"
     ["roo-code"]="roo-code"
     ["DeepChat"]="DeepChat"
 )
