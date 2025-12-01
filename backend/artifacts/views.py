@@ -175,9 +175,8 @@ class ArtifactViewSet(viewsets.GenericViewSet):
 
 
     def list(self, request):
-        """获取插件和MCP服务列表（支持搜索与排序）"""
-        logger.info(f"==== API: [GET] /v1.0/artifacts/ ====")
-        
+        """获取插件和MCP服务列表（支持搜索与排序）
+        """
         tag = request.query_params.get('tag')
         search_value = request.query_params.get('searchValue', '').strip()
         sort = request.query_params.get('sort', 'rec')
@@ -225,7 +224,6 @@ class ArtifactViewSet(viewsets.GenericViewSet):
     def details(self, request):
         """获取插件或MCP服务的详细信息
         """
-        logger.info(f'==== API: [GET] /v1.0/artifacts/details/ ====')
         key = request.query_params.get('key')
         tag = request.query_params.get('tag')
         user_name = request.query_params.get('user_name')
@@ -250,7 +248,6 @@ class ArtifactViewSet(viewsets.GenericViewSet):
             logger.error(msg)
             return Response({'is_success': False, 'message': msg}, status=status.HTTP_400_BAD_REQUEST)
         msg = 'Get detail successfully.'
-        logger.info(msg)
         return Response({'is_success': True, 'message': msg, 'data': serializer.data}, status=status.HTTP_200_OK)
     
     @action(methods=['GET'], detail=False)
