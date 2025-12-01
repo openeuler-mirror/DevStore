@@ -161,14 +161,12 @@ cp -f backend/dev-store-start.sh %{buildroot}/usr/bin/dev-store
 cp -f build/dev-store.desktop %{buildroot}/usr/share/applications/
 
 # 安装图标文件到多个尺寸目录
-if [ -f "frontend/src/assets/logo.png" ]; then
-    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/dev-store.png
-    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/128x128/apps/dev-store.png
-    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/64x64/apps/dev-store.png
-    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/dev-store.png
-    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/32x32/apps/dev-store.png
-    cp frontend/src/assets/logo.png %{buildroot}/usr/share/icons/hicolor/16x16/apps/dev-store.png
-fi
+cp frontend/src/assets/desktop.png %{buildroot}/usr/share/icons/hicolor/256x256/apps/dev-store.png
+cp frontend/src/assets/desktop.png %{buildroot}/usr/share/icons/hicolor/128x128/apps/dev-store.png
+cp frontend/src/assets/desktop.png %{buildroot}/usr/share/icons/hicolor/64x64/apps/dev-store.png
+cp frontend/src/assets/desktop.png %{buildroot}/usr/share/icons/hicolor/48x48/apps/dev-store.png
+cp frontend/src/assets/desktop.png %{buildroot}/usr/share/icons/hicolor/32x32/apps/dev-store.png
+cp frontend/src/assets/desktop.png %{buildroot}/usr/share/icons/hicolor/16x16/apps/dev-store.png
 
 # 安装systemd服务文件
 cp -f build/dev-store.service %{buildroot}/usr/lib/systemd/system/
