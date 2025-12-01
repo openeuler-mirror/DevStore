@@ -377,42 +377,65 @@ class PluginMethods:
         return True, msg
 
     @staticmethod
-    def _read_plugin_info():
-        """读取插件信息并生成数据结构"""
-        # 获取记录插件信息的 YAML 文件
-        logger.info("Start to get YAML files.")
+    def _get_plugin_yaml_files():
+        """获取插件 YAML 文件列表"""
         plugin_repo_dir = Path(PLUGIN_REPO_DIR)
         if not plugin_repo_dir.exists():
             msg = f'Path {plugin_repo_dir} not exists.'
             logger.error(msg)
-            return [], msg
+            return None, msg
         if not plugin_repo_dir.is_dir():
             msg = f'Path {plugin_repo_dir} is not a directory.'
             logger.error(msg)
-            return [], msg
+            return None, msg
+        
         plugin_yaml_list = [str(file) for file in plugin_repo_dir.iterdir()
                             if file.is_file() and (file.suffix == '.yaml' or file.suffix == '.yml')]
         logger.info(f"The plugin meta files: {plugin_yaml_list}")
+        return plugin_yaml_list, ''
 
-        # 读取 YAML 文件, 生成插件信息列表
+    @staticmethod
+    def _parse_yaml_file(plugin_yaml, plugin_dict):
+        """解析单个 YAML 文件并添加插件信息"""
+        try:
+            yaml_handler = YAMLHandler(file_path=plugin_yaml, logger=logger)
+        except (FileError, yaml.YAMLError) as ex:
+            return False, str(ex)
+        
+        for multi_version_plugins in yaml_handler.data.get('plugins'):
+            for plugin_info in list(multi_version_plugins.values())[0]:
+                plugin_info['key'] = plugin_info['name'] + '_' + plugin_info['version']
+                plugin_info['updated_at'] = plugin_info.pop('updated')
+                plugin_info['readme'] = PluginMethods._get_plugin_readme(plugin_info['key'])
+                plugin_info['icon'] = PluginMethods._get_plugin_icon(plugin_info['key'])
+                description = plugin_info.pop('description')
+                plugin_info['description'] = {'default': description}
+                
+                key = plugin_info['key']
+                if key not in plugin_dict:
+                    plugin_dict[key] = plugin_info
+                    continue
+                elif plugin_info['updated_at'] > plugin_dict[key]['updated_at']:
+                    plugin_dict[key] = plugin_info
+                    logger.info(f"Duplicate key {key} found, keeping newer version.")
+        return True, ''
+
+    @staticmethod
+    def _read_plugin_info():
+        """读取插件信息并生成数据结构"""
+        logger.info("Start to get YAML files.")
+        plugin_yaml_list, msg = PluginMethods._get_plugin_yaml_files()
+        if plugin_yaml_list is None:
+            return [], msg
+
         logger.info("Start to read YAML files and generate plugin data.")
-        plugin_data = []
+        plugin_dict = {}
         for plugin_yaml in plugin_yaml_list:
-            try:
-                yaml_handler = YAMLHandler(file_path=plugin_yaml, logger=logger)
-            except (FileError, yaml.YAMLError) as ex:
-                return [], str(ex)
-            for multi_version_plugins in yaml_handler.data.get('plugins'):
-                for plugin_info in list(multi_version_plugins.values())[0]:
-                    plugin_info['key'] = plugin_info['name'] + '_' + plugin_info['version']
-                    plugin_info['updated_at'] = plugin_info.pop('updated')
-                    plugin_info['readme'] = PluginMethods._get_plugin_readme(plugin_info['key'])
-                    plugin_info['icon'] = PluginMethods._get_plugin_icon(plugin_info['key'])
-                    description = plugin_info.pop('description')
-                    plugin_info['description'] = dict()
-                    plugin_info['description']['default'] = description
-                    plugin_data.append(plugin_info)
+            success, error_msg = PluginMethods._parse_yaml_file(plugin_yaml, plugin_dict)
+            if not success:
+                return [], error_msg
 
+        plugin_data = list(plugin_dict.values())
         msg = 'Generate plugin data successfully.'
         logger.info(msg)
         return plugin_data, msg
