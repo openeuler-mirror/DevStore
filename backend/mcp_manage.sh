@@ -158,7 +158,7 @@ is_app_installed() {
     local app="$1"
     
     case "$app" in
-        "roo code"|"roo-code")
+        "roo-code")
             if ! command -v "vscodium" >/dev/null 2>&1 && [[ ! -d "$CALL_USER_HOME/.config/VSCodium" ]]; then
                 return 1
             fi
@@ -172,6 +172,15 @@ is_app_installed() {
                 return 0
             fi
             if [[ -d "$CALL_USER_HOME/.config/DeepChat" ]]; then
+                return 0
+            fi
+            return 1
+            ;;
+        "PolyMind")
+            if command -v "polymind" >/dev/null 2>&1; then
+                return 0
+            fi
+            if [[ -d "$CALL_USER_HOME/.config/PolyMind" ]]; then
                 return 0
             fi
             return 1
@@ -194,7 +203,7 @@ normalize_mcp_config() {
     local app="$2"
     
     case "$app" in
-        "DeepChat")
+        "DeepChat" | "PolyMind")
             jq '
             .mcpServers |= with_entries(.value |= . + {
                 descriptions: (.descriptions // .description // ""),
@@ -286,6 +295,14 @@ query_mcp_in_all_apps() {
     local first=true
 
     for app in "${!APP_CONFIG_PATHS[@]}"; do
+        local user_config
+        user_config=$(get_app_config_path "$app")
+        
+        # 如果配置文件不存在,跳过此项
+        if [[ ! -f "$user_config" ]]; then
+            continue
+        fi
+        
         local display_name="${APP_DISPLAY_NAMES[$app]:-$app}"
         local mcp_status="removed"
 
@@ -324,6 +341,7 @@ MCP配置管理工具  (模块化接口版)
   help                                      - 显示帮助
 
 支持的应用:
+  PolyMind    - PolyMind: DevStation 小助手
   roo-code    - Roo Code (基于VSCodium)
   DeepChat    - DeepChat独立应用
 
