@@ -15,5 +15,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('electronAPI', {
   invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
   closeApp: () => ipcRenderer.send('close-app'),
-  getUsername: () => ipcRenderer.invoke('get-username')
+  getUsername: () => ipcRenderer.invoke('get-username'),
+  minimizeWindow: () => ipcRenderer.send('minimize-window'),
+  toggleMaximize: () => ipcRenderer.send('toggle-maximize'),
+  closeWindow: () => ipcRenderer.send('close-window')
 })

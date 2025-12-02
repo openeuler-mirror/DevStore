@@ -10,11 +10,13 @@
  * Create: 2025-07-30
  * =================================================================================================================== */
 
-const { app, BrowserWindow, shell } = require('electron')
+const { app, BrowserWindow, shell, ipcMain } = require('electron')
 const path = require('path')
 const { registerIpcListeners } = require('./ipc.js')
 
 app.disableHardwareAcceleration()
+
+let mainWindow = null
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -22,6 +24,8 @@ function createWindow() {
     height: 800,
     backgroundColor: '#00000000',
     icon: path.join(__dirname, '../src/assets/logo.png'),
+    frame: true,
+    titleBarStyle: 'hidden',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -32,6 +36,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     }
   })
+
+  mainWindow = win
 
   registerIpcListeners();
 
@@ -75,6 +81,29 @@ function createWindow() {
     })
   }
 }
+
+// 窗口控制 IPC 处理
+ipcMain.on('minimize-window', () => {
+  if (mainWindow) {
+    mainWindow.minimize()
+  }
+})
+
+ipcMain.on('toggle-maximize', () => {
+  if (mainWindow) {
+    if (mainWindow.isMaximized()) {
+      mainWindow.unmaximize()
+    } else {
+      mainWindow.maximize()
+    }
+  }
+})
+
+ipcMain.on('close-window', () => {
+  if (mainWindow) {
+    mainWindow.close()
+  }
+})
 
 app.whenReady().then(createWindow)
 

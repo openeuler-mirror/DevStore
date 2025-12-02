@@ -89,7 +89,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, onActivated, onDeactivated } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ElMessage } from 'element-plus';
@@ -105,6 +105,7 @@ import {
 } from '@/api/index.ts';
 import { generateIconBgColor, getCurrentUsername } from '@/utils/index.ts';
 import { createStatusWatcher } from '@/utils/statusWatcher';
+import { useTabStore } from '@/stores/tabStore';
 
 import McpQuick from '@/views/components/McpQuick.vue';
 import McpCli from '@/views/components/McpCli.vue';
@@ -115,6 +116,7 @@ import OedpCli from '@/views/components/OedpCli.vue';
 const route = useRoute();
 const router = useRouter();
 const {t} = useI18n();
+const { updateTabTitle, activeTabId, findHomeTab, addTab, setActiveTab } = useTabStore();
 
 const tag = ref<Tag>(route.name === 'McpServerDetail' ? 'mcp' : 'oedp');
 const key = ref<string>(Array.isArray(route.params.key) ? route.params.key[0] : route.params.key || '');
@@ -124,29 +126,34 @@ const supportOedpQuick = ref<boolean>(false);
 
 // 点击 crumbs 回到首页
 const toHomePage = () => {
-  // 从当前路由或者sessionStorage中恢复Home页面的状态
-  const homeState = sessionStorage.getItem('homePageState');
-  let homeQuery: any = { tag: tag.value };
-  
-  if (homeState) {
-    try {
-      const parsedState = JSON.parse(homeState);
-      homeQuery = {
-        tag: tag.value,
-        pageSize: parsedState.pageSize || '10',
-        curPage: parsedState.curPage || '1',
-        searchValue: parsedState.searchValue || '',
-        sort: parsedState.sort || 'rec'
-      };
-    } catch (e) {
-      console.error('Failed to parse home page state:', e);
+  const homeTab = findHomeTab();
+  if (homeTab) {
+    // 如果Home页签已存在，直接切换到该页签，并更新tag参数
+    setActiveTab(homeTab.id);
+    // 检查tag是否发生了变化
+    const currentHomeTag = homeTab.route.query?.tag;
+    const newQuery = { ...homeTab.route.query, tag: tag.value };
+    // 如果tag发生了切换，重置页码为1
+    if (currentHomeTag !== tag.value) {
+      newQuery.curPage = '1';
     }
+    router.push({
+      path: '/',
+      query: newQuery
+    });
+  } else {
+    // 如果Home页签不存在，新建一个Home页签
+    const newHomeTab = {
+      id: 'home',
+      title: 'Home',
+      route: { path: '/', query: { tag: tag.value } }
+    };
+    addTab(newHomeTab);
+    router.push({
+      path: '/',
+      query: { tag: tag.value }
+    });
   }
-  
-  router.push({
-    path: '/',
-    query: homeQuery
-  });
 };
 
 // 根据当前 tag，判断下右显示 安装/部署
@@ -195,6 +202,13 @@ const getDetail = async () => {
       compiledMarkdown.value = DOMPurify.sanitize(dirtyHtml);
       // 判断是否支持 oedp 快捷部署
       supportOedpQuick.value = itemDetail.value.localhost_available;
+      
+      // 更新页签标题 - 只在当前页签对应当前组件时更新
+      const expectedTabId = `${tag.value}-${key.value}`;
+      const currentTabId = activeTabId.value;
+      if (itemDetail.value.name && currentTabId === expectedTabId) {
+        updateTabTitle(currentTabId, itemDetail.value.name);
+      }
     } else if (res) {
       console.log(res.message);
     }
@@ -273,17 +287,45 @@ const deleteApp = async (appName: string) => {
   }
 };
 
+// 轮询控制
 let intervalId: NodeJS.Timeout | null = null;
 
-// 轮询
-onMounted(async () => {
-  // 立即执行一次
-  await getDetail();
-
-  // 启动轮询
+// 启动轮询
+const startPolling = () => {
+  if (intervalId) return; // 避免重复启动
   intervalId = setInterval(async () => {
     await getDetail();
   }, 2000);
+};
+
+// 停止轮询
+const stopPolling = () => {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+};
+
+// 组件挂载
+onMounted(async () => {
+  // 立即执行一次
+  await getDetail();
+  // 启动轮询
+  startPolling();
+});
+
+// 组件被激活（显示）时 - keep-alive
+onActivated(() => {
+  // 立即刷新一次数据
+  getDetail();
+  // 启动轮询
+  startPolling();
+});
+
+// 组件被停用（隐藏）时 - keep-alive
+onDeactivated(() => {
+  // 停止轮询
+  stopPolling();
 });
 
 // 监听 download_status 变化
@@ -340,9 +382,7 @@ watch(
 
 // 页面卸载时清除定时器
 onUnmounted(() => {
-  if (intervalId) {
-    clearInterval(intervalId);
-  }
+  stopPolling();
 });
 </script>
 
