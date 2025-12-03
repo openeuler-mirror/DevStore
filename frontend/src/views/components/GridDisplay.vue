@@ -70,10 +70,11 @@ import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { Tag } from '@/api/index.ts';
 import { generateIconBgColor } from '@/utils/index.ts';
+import { useTabStore } from '@/stores/tabStore';
 
-// 待完善注释
 const router = useRouter();
 const {t} = useI18n();
+const { addTab } = useTabStore();
 
 const props = withDefaults(
   defineProps<{
@@ -86,9 +87,20 @@ const props = withDefaults(
   }
 );
 
-// 跳转至详情页 tag, key
-const goToDetail = (key) => {
-  router.push(`/${props.tag}/${key}`);
+// 跳转至详情页 tag, key - 新增页签
+const goToDetail = (key: string) => {
+  const item = props.itemList.find((i: any) => i.key === key);
+  const detailPath = `/${props.tag}/${key}`;
+  
+  // 添加新页签
+  addTab({
+    id: `${props.tag}-${key}`,
+    title: item?.name || key,
+    route: { path: detailPath }
+  });
+  
+  // 跳转到详情页
+  router.push(detailPath);
 };
 
 </script>

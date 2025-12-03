@@ -32,3 +32,16 @@ declare module 'vue' {
   import { ComponentPublicInstance } from 'vue';
   export * from '@vue/runtime-dom';
 }
+
+interface ElectronAPI {
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
+  closeApp: () => void;
+  getUsername: () => Promise<string>;
+  minimizeWindow: () => void;
+  toggleMaximize: () => void;
+  closeWindow: () => void;
+}
+
+interface Window {
+  electronAPI?: ElectronAPI;
+}

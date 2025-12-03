@@ -12,7 +12,7 @@
 
 <template>
   <!-- 首页 -->
-  <div class="home" :key="renderKey">
+  <div class="home">
     <!-- 顶部数据展示 -->
     <div class="statics">
       <div class="left-div">{{ t('home.mcpServer') }}<div class="server-num">{{ mcpCount }}</div></div>
@@ -60,7 +60,7 @@
             <div v-else-if="searchValue !== '' && activeTab === tab.name" class="label-sum">{{ count }}</div>
           </template>
           <!-- 子组件：卡片列表 -->
-            <grid-display :tag="tab.name as Tag" :item-list="itemList" :key="`grid-${renderKey}`" />
+            <grid-display :tag="tab.name as Tag" :item-list="itemList" />
         </el-tab-pane>
       </el-tabs>
       <!-- 分页 -->
@@ -72,7 +72,7 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { ref, watch, onMounted, onUnmounted, computed, onBeforeUnmount, nextTick } from 'vue';
+import { ref, watch, onMounted, onUnmounted, onActivated, onDeactivated, computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { throttle } from 'underscore';
@@ -81,33 +81,105 @@ import { queryList, Tag, type QueryListResponse } from '@/api/index.ts';
 import { eventBus, EVENT_TYPES } from '@/utils/eventBus';
 import { updateRouteQuery } from '@/utils/index';
 import { Search } from '@element-plus/icons-vue';
+import { useTabStore } from '@/stores/tabStore';
+
+// 每个Home页签的状态存储
+interface HomePageState {
+  searchInput: string;
+  searchValue: string;
+  count: number;
+  mcpCount: number;
+  oedpCount: number;
+  itemList: any[];
+  currentPage: number;
+  pageSize: number;
+  activeSortTab: string;
+  activeTab: string;
+  tag: string;
+}
+
+// 所有Home页签的状态映射（模块级别，所有组件实例共享，使用reactive使其可响应）
+const homeStatesMap = reactive(new Map<string, HomePageState>());
 
 const route = useRoute();
-const showList = ref(true);
 const router = useRouter();
 const {t} = useI18n();
+const { activeTabId } = useTabStore();
 
-// 强制渲染key
-const renderKey = ref(0);
+// 获取当前页签ID
+const currentTabId = computed(() => activeTabId.value);
+
+// 从URL参数初始化当前页签的状态
+const initStateFromRoute = (): HomePageState => {
+  return reactive({
+    searchInput: (route.query.searchValue as string) || '',
+    searchValue: (route.query.searchValue as string) || '',
+    count: 0,
+    mcpCount: 0,
+    oedpCount: 0,
+    itemList: [],
+    currentPage: parseInt(route.query.curPage as string) || 1,
+    pageSize: parseInt(route.query.pageSize as string) || 10,
+    activeSortTab: (route.query.sort as string) || 'rec',
+    activeTab: (route.query.tag as string) || 'mcp',
+    tag: (route.query.tag as string) || 'mcp'
+  });
+};
+
+// 获取或初始化当前页签的状态
+const getCurrentState = (): HomePageState => {
+  const tabId = currentTabId.value;
+  if (!homeStatesMap.has(tabId)) {
+    homeStatesMap.set(tabId, initStateFromRoute());
+  }
+  return homeStatesMap.get(tabId)!;
+};
 
 // 从路由获取当前 tag
-const tag = computed(() => route.query.tag ?? 'mcp');
-// 搜索框里显示的值 - 从URL参数初始化
-const searchInput = ref((route.query.searchValue as string) || '');
-// 查询时实际使用的搜索值 - 从URL参数初始化
-const searchValue = ref((route.query.searchValue as string) || '');
+const tag = computed(() => getCurrentState().tag);
+// 搜索框里显示的值
+const searchInput = computed({
+  get: () => getCurrentState().searchInput,
+  set: (val) => { getCurrentState().searchInput = val; }
+});
+// 查询时实际使用的搜索值
+const searchValue = computed({
+  get: () => getCurrentState().searchValue,
+  set: (val) => { getCurrentState().searchValue = val; }
+});
 // 搜索结果个数
-const count = ref<number>(0);
+const count = computed({
+  get: () => getCurrentState().count,
+  set: (val) => { getCurrentState().count = val; }
+});
 // 个数
-const mcpCount = ref<number>(0);
-const oedpCount = ref<number>(0);
+const mcpCount = computed({
+  get: () => getCurrentState().mcpCount,
+  set: (val) => { getCurrentState().mcpCount = val; }
+});
+const oedpCount = computed({
+  get: () => getCurrentState().oedpCount,
+  set: (val) => { getCurrentState().oedpCount = val; }
+});
 // 查询首页列表信息
-const itemList = ref([]);
-// 分页 - 从URL参数初始化
-const currentPage = ref(parseInt(route.query.curPage as string) || 1);
-const pageSize = ref(parseInt(route.query.pageSize as string) || 10);
-// 右侧 tab - 从URL参数初始化
-const activeSortTab = ref((route.query.sort as string) || 'rec');
+const itemList = computed({
+  get: () => getCurrentState().itemList,
+  set: (val) => { getCurrentState().itemList = val; }
+});
+// 分页
+const currentPage = computed({
+  get: () => getCurrentState().currentPage,
+  set: (val) => { getCurrentState().currentPage = val; }
+});
+const pageSize = computed({
+  get: () => getCurrentState().pageSize,
+  set: (val) => { getCurrentState().pageSize = val; }
+});
+// 右侧 tab
+const activeSortTab = computed({
+  get: () => getCurrentState().activeSortTab,
+  set: (val) => { getCurrentState().activeSortTab = val; }
+});
 
 const getList = async () => {
   try {
@@ -128,10 +200,6 @@ const getList = async () => {
       count.value = searchValue.value && searchValue.value.trim() !== ''
         ? res.data.search_count || 0
         : tag.value === 'mcp' ? res.data.mcp_count : res.data.oedp_count;
-        
-      //强制触发视图更新
-      renderKey.value++;
-      await nextTick();
       
     } else if (res) {
       console.log(res.message);
@@ -205,14 +273,20 @@ const handleClear = async () => {
 };
 
 // 左侧 tab 切换：mcp / oedp
-const activeTab = ref(tag.value || 'mcp');
+const activeTab = computed({
+  get: () => getCurrentState().activeTab,
+  set: (val) => { getCurrentState().activeTab = val; }
+});
 const tabs = computed(() => [
   { label: t('home.mcpServer'), name: 'mcp', count: mcpCount.value },
   { label: t('home.oeDeployPlugin'), name: 'oedp', count: oedpCount.value }
 ]);
 // 切换左侧 tab 时，重新查询
 const handleTabChange = async (tabName: Tag) => {
-  currentPage.value = 1;
+  const state = getCurrentState();
+  state.currentPage = 1;
+  state.activeTab = tabName;
+  state.tag = tabName;
   // 更新 URL 参数（保留其他已有参数）
   await updateRouteQuery(router, route, {
     tag: tabName as string,
@@ -239,9 +313,11 @@ const handleSortTabChange = async () => {
 watch(
   () => route.query.tag,
   (nv) => {
+    const state = getCurrentState();
     if (nv) {
       // 更新激活的 Tab
-      activeTab.value = nv;
+      state.activeTab = nv as string;
+      state.tag = nv as string;
       // 重新获取数据
     } else {
       // 如果 URL 中没有 type 参数，跳转到默认值
@@ -251,11 +327,27 @@ watch(
   { immediate: true }
 );
 
-// 轮询
+// 轮询控制
 let intervalId: NodeJS.Timeout | null = null;
+
 const getAndCheck = async () => {
   await getList();
-  // 判断停止轮询的逻辑加在这里
+};
+
+// 启动轮询
+const startPolling = () => {
+  if (intervalId) return; // 避免重复启动
+  intervalId = setInterval(() => {
+    getAndCheck();
+  }, 10000);
+};
+
+// 停止轮询
+const stopPolling = () => {
+  if (intervalId) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
 };
 
 // 监听同步成功事件的处理函数
@@ -264,80 +356,97 @@ const handleSyncSuccess = async () => {
   await getAndCheck();
 };
 
-// 轮询时机
-onMounted(async () => {
+// 初始化状态和URL参数的公共函数
+const initializeStateAndUrl = () => {
+  // 初始化当前页签的状态
+  const tabId = currentTabId.value;
+  if (!homeStatesMap.has(tabId)) {
+    homeStatesMap.set(tabId, initStateFromRoute());
+  } else {
+    // 如果状态已存在，从路由更新状态
+    const state = getCurrentState();
+    if (route.query.searchValue !== undefined) {
+      state.searchInput = route.query.searchValue as string;
+      state.searchValue = route.query.searchValue as string;
+    }
+    if (route.query.curPage) state.currentPage = parseInt(route.query.curPage as string);
+    if (route.query.pageSize) state.pageSize = parseInt(route.query.pageSize as string);
+    if (route.query.sort) state.activeSortTab = route.query.sort as string;
+    if (route.query.tag) {
+      state.activeTab = route.query.tag as string;
+      state.tag = route.query.tag as string;
+    }
+  }
+  
   // 检查并设置所有必要的URL参数
+  const state = getCurrentState();
   const currentQuery = { ...route.query };
   let needsUpdate = false;
 
   if (!currentQuery.tag) {
-    currentQuery.tag = 'mcp';
+    currentQuery.tag = state.tag;
     needsUpdate = true;
   }
   if (!currentQuery.pageSize) {
-    currentQuery.pageSize = pageSize.value.toString();
+    currentQuery.pageSize = state.pageSize.toString();
     needsUpdate = true;
   }
   if (!currentQuery.curPage) {
-    currentQuery.curPage = currentPage.value.toString();
+    currentQuery.curPage = state.currentPage.toString();
     needsUpdate = true;
   }
   if (!currentQuery.sort) {
-    currentQuery.sort = activeSortTab.value;
+    currentQuery.sort = state.activeSortTab;
     needsUpdate = true;
   }
-  if (!currentQuery.searchValue) {
-    currentQuery.searchValue = searchValue.value;
+  if (!currentQuery.searchValue && state.searchValue) {
+    currentQuery.searchValue = state.searchValue;
     needsUpdate = true;
   }
 
   if (needsUpdate) {
     router.replace({ query: currentQuery });
   }
-  
-  // 立即执行一次
-  await getAndCheck();
+};
 
+// 组件挂载
+onMounted(async () => {
+  // 初始化状态和URL
+  initializeStateAndUrl();
+  
+  // 立即执行一次查询
+  await getAndCheck();
+  
   // 启动轮询
-  intervalId = setInterval(() => {
-    getAndCheck();
-  }, 10000);
+  startPolling();
 
   // 监听同步成功事件
   eventBus.on(EVENT_TYPES.SYNC_SUCCESS, handleSyncSuccess);
 });
 
-// 保存当前页面状态到sessionStorage
-const savePageState = () => {
-  const state = {
-    pageSize: pageSize.value,
-    curPage: currentPage.value,
-    searchValue: searchValue.value,
-    sort: activeSortTab.value,
-    tag: tag.value
-  };
-  sessionStorage.setItem('homePageState', JSON.stringify(state));
-};
+// 组件被激活（显示）时 - keep-alive
+onActivated(() => {
+  // 同步路由状态
+  initializeStateAndUrl();
+  
+  // 立即刷新一次数据
+  getAndCheck();
+  
+  // 启动轮询
+  startPolling();
+});
 
-// 在状态变化时保存
-watch([pageSize, currentPage, searchValue, activeSortTab, tag], () => {
-  savePageState();
+// 组件被停用（隐藏）时 - keep-alive
+onDeactivated(() => {
+  // 停止轮询
+  stopPolling();
 });
 
 // 页面卸载时清除定时器和事件监听器
 onUnmounted(() => {
-  if (intervalId) {
-    clearInterval(intervalId);
-  }
+  stopPolling();
   // 移除事件监听器
   eventBus.off(EVENT_TYPES.SYNC_SUCCESS, handleSyncSuccess);
-  // 保存状态
-  savePageState();
-});
-
-// 页面离开前保存状态
-onBeforeUnmount(() => {
-  savePageState();
 });
 </script>
 
