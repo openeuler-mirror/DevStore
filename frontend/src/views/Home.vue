@@ -119,7 +119,7 @@ const initStateFromRoute = (): HomePageState => {
     oedpCount: 0,
     itemList: [],
     currentPage: parseInt(route.query.curPage as string) || 1,
-    pageSize: parseInt(route.query.pageSize as string) || 10,
+    pageSize: parseInt(route.query.pageSize as string) || 20,
     activeSortTab: (route.query.sort as string) || 'rec',
     activeTab: (route.query.tag as string) || 'mcp',
     tag: (route.query.tag as string) || 'mcp'
@@ -457,6 +457,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding-bottom: 8px;
   .statics {
     display: flex;
     margin: 32px 0 24px;
