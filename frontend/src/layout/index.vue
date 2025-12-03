@@ -71,12 +71,12 @@
           <el-menu-item index="5">{{ t('nav.feedback') }}</el-menu-item>
           <el-menu-item index="6" @click="isLogVisible = true">{{ t('nav.log') }}</el-menu-item>
         </el-menu>
-      </div>
-
-      <!-- 右侧更新时间 + 按钮 -->
-      <div class="update-time">
-        {{ t('nav.updateTime') }}{{ updateTime }}
-        <el-icon class="sync"><IconLoad @click="handleSync" /></el-icon>
+        
+        <!-- 右侧更新时间 + 按钮 -->
+        <div class="update-time">
+          {{ t('nav.updateTime') }}{{ updateTime }}
+          <el-icon class="sync"><IconLoad @click="handleSync" /></el-icon>
+        </div>
       </div>
 
       <!--  日志弹窗 -->
@@ -291,9 +291,9 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   background-image: url("@/assets/img/background.svg");
-  background-size: 100% auto;
+  background-size: cover;
   background-repeat: no-repeat;
-  background-position: center top;
+  background-position: center center;
   background-attachment: fixed;
 
   .titlebar {
@@ -417,10 +417,11 @@ onMounted(async () => {
     .navbar {
       width: 100%;
       display: flex;
-      justify-content: space-around;
+      justify-content: space-between;
+      align-items: center;
 
       .navbar-menu {
-        width: 100%;
+        flex: 1;
         height: 56px;
         border: none;
         background-color: transparent;
@@ -435,26 +436,24 @@ onMounted(async () => {
           }
         }
       }
-    }
 
-    .update-time {
-      margin-right: 8px;
-      height: 56px;
-      line-height: 56px;
-      position: fixed;
-      top: 40px;
-      right: 24px;
-      color: var(--o-text-color-tertiary);
-      display: flex;
-      align-items: center;
-      z-index: 999;
-      .sync, .sync > svg{
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-      }
-      .sync {
-        margin-left: 8px;
+      .update-time {
+        height: 56px;
+        line-height: 56px;
+        color: var(--o-text-color-tertiary);
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding-left: 16px;
+        .sync, .sync > svg{
+          width: 24px;
+          height: 24px;
+          cursor: pointer;
+        }
+        .sync {
+          margin-left: 8px;
+        }
       }
     }
   }
