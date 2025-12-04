@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           dev-store
-Version:        1.0.3
+Version:        1.0.4
 Release:        1
 Summary:        Development Store Management System
 
@@ -304,6 +304,12 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Wed Dec 3 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.4-1
+- Update desktop icon
+- Remove massive logs
+- Support for quickly adding MCP servers to PolyMind
+- Fix handling issue when oeDeploy plugin is duplicated
+- Optimize interface, support multiple tabs
 * Thu Oct 23 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.3-1
 - Replace MariaDB with SQLite database, optimize initialization process for faster startup
 - Optimize cleanup and write processes during data synchronization exceptions
