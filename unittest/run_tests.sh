@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# 获取脚本绝对路径
+SCRIPT_PATH=$(readlink -f "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+PROJECT_ROOT="$SCRIPT_DIR/../backend"
+
+# 设置Python环境变量
+export PYTHONPATH="$PROJECT_ROOT:$PYTHONPATH"
+export DJANGO_SETTINGS_MODULE="dev_store.settings"
+
+# 执行测试用例
+python3 -m coverage run -m pytest
+
+# 检查执行结果
+if [ $? -eq 0 ]; then
+    echo "所有测试用例执行成功"
+    python3 -m coverage report
+else
+    echo "部分测试用例执行失败"
+    python3 -m coverage report
+    exit 1
+fi
+
