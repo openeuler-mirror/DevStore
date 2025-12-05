@@ -148,3 +148,85 @@ class TestUtils(unittest.TestCase):
         result = process_search_with_relevance(mock_queryset, "test", sort='new')
         self.assertIsNotNone(result)
 
+    @patch('artifacts.utils.PluginItemSerializer')
+    def test_update_plugin_action_list_success(self, mock_serializer_cls):
+        """测试成功更新插件action列表"""
+        mock_serializer = MagicMock()
+        mock_serializer.is_valid.return_value = True
+        mock_serializer_cls.return_value = mock_serializer
+        plugin = MagicMock()
+
+        result = update_plugin_action_list(plugin, [])
+        self.assertTrue(result)
+        mock_serializer.save.assert_called_once()
+
+    @patch('artifacts.utils.PluginItemSerializer')
+    def test_update_plugin_action_list_invalid(self, mock_serializer_cls):
+        """测试更新插件action列表失败"""
+        mock_serializer = MagicMock()
+        mock_serializer.is_valid.return_value = False
+        mock_serializer_cls.return_value = mock_serializer
+        plugin = MagicMock()
+
+        result = update_plugin_action_list(plugin, [])
+        self.assertFalse(result)
+        mock_serializer.save.assert_not_called()
+
+    @patch('artifacts.utils.PluginItemSerializer')
+    def test_update_plugin_status_success(self, mock_serializer_cls):
+        """测试更新插件状态成功"""
+        mock_serializer = MagicMock()
+        mock_serializer.is_valid.return_value = True
+        mock_serializer_cls.return_value = mock_serializer
+        plugin = MagicMock()
+
+        result = update_plugin_status(plugin, Task.Status.SUCCESS)
+        self.assertTrue(result)
+        mock_serializer.save.assert_called_once()
+
+    @patch('artifacts.utils.PluginItemSerializer')
+    def test_update_plugin_status_failed(self, mock_serializer_cls):
+        """测试更新插件状态失败"""
+        mock_serializer = MagicMock()
+        mock_serializer.is_valid.return_value = False
+        mock_serializer_cls.return_value = mock_serializer
+        plugin = MagicMock()
+
+        result = update_plugin_status(plugin, Task.Status.SUCCESS)
+        self.assertFalse(result)
+        mock_serializer.save.assert_not_called()
+
+    def test_get_devstore_log_large_file(self):
+        """测试超过100KB的日志读取"""
+        test_content = ("line\n" * 30000)
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.log') as f:
+            f.write(test_content)
+            temp_path = f.name
+
+        try:
+            with patch('artifacts.utils.LOG_DIR', os.path.dirname(temp_path)):
+                with patch('os.path.join', return_value=temp_path):
+                    log = get_devstore_log()
+                    self.assertTrue(len(log) <= 100 * 1024 + 100)
+                    self.assertIn("line", log)
+        finally:
+            os.unlink(temp_path)
+
+    @patch('artifacts.utils.connection.cursor')
+    def test_clear_table(self, mock_cursor):
+        """测试清空数据库表"""
+        mock_ctx = MagicMock()
+        mock_cursor.return_value.__enter__.return_value = mock_ctx
+
+        clear_table('test_table')
+        self.assertEqual(mock_ctx.execute.call_count, 2)
+
+    def test_calculate_weighted_relevance_calls_annotate(self):
+        """测试相关性计算调用annotate"""
+        mock_queryset = MagicMock()
+        mock_queryset.annotate.return_value = mock_queryset
+
+        result = calculate_weighted_relevance(mock_queryset, "abc def")
+        self.assertEqual(result, mock_queryset)
+        mock_queryset.annotate.assert_called()
+
