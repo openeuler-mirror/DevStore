@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           dev-store
-Version:        1.0.4
+Version:        1.0.5
 Release:        1
 Summary:        Development Store Management System
 
@@ -304,6 +304,8 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Tue Dec 9 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.5-1
+- Optimize the processing logic for parsing MCP READMEs
 * Wed Dec 3 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.4-1
 - Update desktop icon
 - Remove massive logs

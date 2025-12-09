@@ -404,6 +404,20 @@ class MCPMethods:
             return []
 
     @staticmethod
+    def _find_readme_in_dir(search_dir: str, pkg_name: str) -> str:
+        """在指定目录中查找readme文件（不区分大小写）"""
+        if not os.path.exists(search_dir):
+            return ""
+        
+        for filename in os.listdir(search_dir):
+            if filename.lower() == 'readme.md':
+                readme_path = os.path.join(search_dir, filename)
+                with open(readme_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                return content
+        return ""
+    
+    @staticmethod
     def _read_package_resources(pkg: Dict) -> bool:
         """从缓存目录读取包的资源文件"""
         cache_dir = os.path.join(CACHE_DIR, f"{pkg['name']}_{pkg['version']}")
@@ -412,43 +426,41 @@ class MCPMethods:
             logger.error(f"Cache directory not found for {pkg['name']}: {cache_dir}")
             return False
         
+        base_path = os.path.join(cache_dir, 'opt', 'mcp-servers', 'servers')
+        if not os.path.exists(base_path):
+            logger.warning(f"Base path not found: {base_path}")
+            return False
+        
         readme = ""
         icon = ""
         mcp_config = {}
         
-        # 读取资源文件
-        base_path = os.path.join(cache_dir, 'opt', 'mcp-servers', 'servers')
-        
         try:
-            if not os.path.exists(base_path):
-                logger.warning(f"Base path not found: {base_path}")
-                return False
-                
             for server_dir in os.listdir(base_path):
-                server_path = os.path.join(base_path, server_dir, 'src')
+                server_dir_path = os.path.join(base_path, server_dir)
                 
-                # 读取readme
-                readme_path = os.path.join(server_path, 'readme.md')
-                if os.path.exists(readme_path):
-                    with open(readme_path, 'r', encoding='utf-8') as f:
-                        readme = f.read()
-                    logger.debug(f"Read README for {pkg['name']}")
+                # 检查必需的mcp_config.json是否存在
+                config_path = os.path.join(server_dir_path, 'mcp_config.json')
+                if not os.path.exists(config_path):
+                    continue  # 跳过没有配置文件的目录
                 
-                # 读取icon
+                # 读取必需的配置文件
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    mcp_config = json.load(f)
+                
+                # 读取可选的readme - 先在src目录查找，再在上级目录查找
+                server_path = os.path.join(server_dir_path, 'src')
+                readme = MCPMethods._find_readme_in_dir(server_path, pkg['name'])
+                if not readme:
+                    readme = MCPMethods._find_readme_in_dir(server_dir_path, pkg['name'])
+                
+                # 读取可选的icon
                 icon_path = os.path.join(server_path, 'icon.png')
                 if os.path.exists(icon_path):
                     with open(icon_path, 'rb') as f:
                         icon = base64.b64encode(f.read()).decode('utf-8')
-                    logger.debug(f"Read icon for {pkg['name']}")
                 
-                # 读取配置
-                config_path = os.path.join(base_path, server_dir, 'mcp_config.json')
-                if os.path.exists(config_path):
-                    with open(config_path, 'r', encoding='utf-8') as f:
-                        mcp_config = json.load(f)
-                    logger.debug(f"Read config for {pkg['name']}")
-                
-                break  
+                break  # 找到第一个有效的MCP目录
                 
         except Exception as e:
             logger.error(f"Failed to read resources for {pkg['name']}: {e}")
