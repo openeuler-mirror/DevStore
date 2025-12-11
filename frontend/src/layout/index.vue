@@ -117,13 +117,13 @@ const updateTime = ref<string>('2025');
 // 页签管理
 const { tabs, activeTabId, addTab, removeTab, setActiveTab, updateCurrentTab, updateCurrentTabId, updateTabTitle, reorderTabs, findHomeTab } = useTabStore();
 
-// 计算keep-alive的key：Home页使用固定key，Detail页使用path
+// 计算keep-alive的key：基于route
 const keepAliveKey = computed(() => {
-  if (route.name === 'Home') {
-    // Home组件使用固定key，但内部通过页签ID管理不同状态
+  if (route.path === '/') {
+    // Home页使用固定key
     return 'home';
   }
-  // Detail页使用path，确保不同的detail有独立的缓存
+  // Detail页使用path作为key
   return route.path;
 });
 
@@ -196,12 +196,13 @@ watch(() => route.fullPath, () => {
   
   // 根据路由类型更新ID和标题
   if (route.path === '/') {
-    // Home页 - 只更新路由信息和标题，不改变页签ID
-    // Home页签的ID由toHomePage方法或初始化时确定
-    updateCurrentTab({ path: route.path, query: route.query });
-    updateTabTitle(activeTabId.value, 'Home');
+    // Home页 - 只在当前活动页签是Home页签时才更新
+    if (currentTabId === 'home') {
+      updateCurrentTab({ path: route.path, query: route.query });
+      updateTabTitle(activeTabId.value, 'Home');
+    }
   } else if (route.name === 'McpServerDetail' || route.name === 'OedpPluginDetail') {
-    // Detail页面 - 只有当页签ID匹配时才更新路由信息
+    // Detail页面
     // 从路径中提取 tag 和 key
     const pathParts = route.path.split('/').filter(p => p);
     if (pathParts.length >= 2) {
@@ -209,10 +210,11 @@ watch(() => route.fullPath, () => {
       const key = pathParts[1];
       const expectedTabId = `${tag}-${key}`;
       
-      // 只有当前页签ID匹配时才更新路由信息
-      if (currentTabId === expectedTabId) {
-        updateCurrentTab({ path: route.path, query: route.query });
-      }
+      // 激活对应的页签
+      setActiveTab(expectedTabId);
+      
+      // 更新路由信息
+      updateCurrentTab({ path: route.path, query: route.query });
     }
   }
 }, { immediate: true });

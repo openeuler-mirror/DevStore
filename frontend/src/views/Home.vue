@@ -313,6 +313,9 @@ const handleSortTabChange = async () => {
 watch(
   () => route.query.tag,
   (nv) => {
+    // 只在当前路由是 Home 页时才处理
+    if (route.path !== '/') return;
+    
     const state = getCurrentState();
     if (nv) {
       // 更新激活的 Tab
@@ -321,7 +324,7 @@ watch(
       // 重新获取数据
     } else {
       // 如果 URL 中没有 type 参数，跳转到默认值
-      router.replace({ query: { ...route.query, tag: 'mcp' } });
+      router.replace({ path: route.path, query: { ...route.query, tag: 'mcp' } });
     }
   },
   { immediate: true }
@@ -352,12 +355,17 @@ const stopPolling = () => {
 
 // 监听同步成功事件的处理函数
 const handleSyncSuccess = async () => {
+  // 只在当前路由是 Home 页时才刷新数据
+  if (route.path !== '/') return;
   // 立即刷新数据
   await getAndCheck();
 };
 
 // 初始化状态和URL参数的公共函数
 const initializeStateAndUrl = () => {
+  // 只在当前路由是 Home 页时才处理
+  if (route.path !== '/') return;
+  
   // 初始化当前页签的状态
   const tabId = currentTabId.value;
   if (!homeStatesMap.has(tabId)) {
@@ -405,7 +413,7 @@ const initializeStateAndUrl = () => {
   }
 
   if (needsUpdate) {
-    router.replace({ query: currentQuery });
+    router.replace({ path: route.path, query: currentQuery });
   }
 };
 
@@ -426,6 +434,9 @@ onMounted(async () => {
 
 // 组件被激活（显示）时 - keep-alive
 onActivated(() => {
+  // 只在当前路由是 Home 页时才处理
+  if (route.path !== '/') return;
+  
   // 同步路由状态
   initializeStateAndUrl();
   

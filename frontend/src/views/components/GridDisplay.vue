@@ -88,19 +88,20 @@ const props = withDefaults(
 );
 
 // 跳转至详情页 tag, key - 新增页签
-const goToDetail = (key: string) => {
+const goToDetail = async (key: string) => {
   const item = props.itemList.find((i: any) => i.key === key);
   const detailPath = `/${props.tag}/${key}`;
+  const tabId = `${props.tag}-${key}`;
   
-  // 添加新页签
+  // 先添加页签（不激活）
   addTab({
-    id: `${props.tag}-${key}`,
+    id: tabId,
     title: item?.name || key,
     route: { path: detailPath }
-  });
+  }, false);
   
-  // 跳转到详情页
-  router.push(detailPath);
+  // 然后跳转到详情页
+  await router.push(detailPath);
 };
 
 </script>
