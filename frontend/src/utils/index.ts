@@ -49,7 +49,7 @@ export async function updateRouteQuery(
     }
   });
   
-  await router.push({ query: newQuery });
+  await router.push({ path: route.path, query: newQuery });
 }
 
 /**

@@ -36,15 +36,19 @@ const tabStore = reactive<TabStore>({
 });
 
 export function useTabStore() {
-  const addTab = (tab: Tab) => {
+  const addTab = (tab: Tab, activate: boolean = true) => {
     const existingTab = tabStore.tabs.find(t => t.id === tab.id);
     if (existingTab) {
-      // 如果页签已存在，切换到该页签
-      tabStore.activeTabId = tab.id;
+      // 如果页签已存在，根据activate参数决定是否切换
+      if (activate) {
+        tabStore.activeTabId = tab.id;
+      }
     } else {
       // 否则新增页签
       tabStore.tabs.push(tab);
-      tabStore.activeTabId = tab.id;
+      if (activate) {
+        tabStore.activeTabId = tab.id;
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           dev-store
-Version:        1.0.5
+Version:        1.0.6
 Release:        1
 Summary:        Development Store Management System
 
@@ -304,6 +304,8 @@ if [ $1 -eq 0 ]; then
 fi
 
 %changelog
+* Thu Dec 11 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.6-1
+- Fix the issue where clicking a component button incorrectly navigates to the Home page.
 * Tue Dec 9 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.5-1
 - Optimize the processing logic for parsing MCP READMEs
 * Wed Dec 3 2025 dingjiahui <dingjiahui4@huawei.com> - 1.0.4-1
