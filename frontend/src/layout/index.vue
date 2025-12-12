@@ -334,7 +334,7 @@ onMounted(async () => {
         gap: 4px;
         overflow-x: auto;
         flex: 1;
-        -webkit-app-region: drag;
+        -webkit-app-region: no-drag;
 
         &::-webkit-scrollbar {
           height: 4px;
