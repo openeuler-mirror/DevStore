@@ -16,24 +16,26 @@
     <div class="titlebar">
       <div class="titlebar-left">
         <div class="app-title">DevStore</div>
-        <div class="tabs-container">
-          <div 
-            v-for="(tab, index) in tabs" 
-            :key="tab.id" 
-            :class="['tab', { active: tab.id === activeTabId }]"
-            :draggable="true"
-            @click="switchTab(tab.id)"
-            @dragstart="handleDragStart(index, $event)"
-            @dragover.prevent="handleDragOver(index)"
-            @drop="handleDrop(index)"
-            @dragend="handleDragEnd">
-            <span class="tab-title">{{ tab.title }}</span>
-            <el-icon 
-              v-if="tabs.length > 1"
-              class="tab-close" 
-              @click.stop="closeTab(tab.id)">
-              <Close />
-            </el-icon>
+        <div class="tabs-wrapper">
+          <div class="tabs-container">
+            <div 
+              v-for="(tab, index) in tabs" 
+              :key="tab.id" 
+              :class="['tab', { active: tab.id === activeTabId }]"
+              :draggable="true"
+              @click="switchTab(tab.id)"
+              @dragstart="handleDragStart(index, $event)"
+              @dragover.prevent="handleDragOver(index)"
+              @drop="handleDrop(index)"
+              @dragend="handleDragEnd">
+              <span class="tab-title">{{ tab.title }}</span>
+              <el-icon 
+                v-if="tabs.length > 1"
+                class="tab-close" 
+                @click.stop="closeTab(tab.id)">
+                <Close />
+              </el-icon>
+            </div>
           </div>
         </div>
       </div>
@@ -328,17 +330,33 @@ onMounted(async () => {
         color: var(--o-text-color-primary);
       }
 
-      .tabs-container {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        overflow-x: auto;
+      .tabs-wrapper {
         flex: 1;
+        overflow-x: auto;
+        overflow-y: hidden;
         -webkit-app-region: no-drag;
 
         &::-webkit-scrollbar {
           height: 4px;
         }
+
+        &::-webkit-scrollbar-thumb {
+          background-color: rgba(0, 0, 0, 0.2);
+          border-radius: 2px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background-color: transparent;
+        }
+      }
+
+      .tabs-container {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        -webkit-app-region: drag;
+        width: fit-content;
+        min-width: 100%;
 
         .tab {
           -webkit-app-region: no-drag;
