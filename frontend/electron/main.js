@@ -70,16 +70,24 @@ function createWindow() {
   } else {
     console.log('Open file in dist')
     win.loadFile(path.join(__dirname, '../dist/index.html'))
-
-    win.webContents.on('will-navigate', (event, url) => {
-      if (url.startsWith('https://gitee.com/')) {
-        // 阻止导航
-        event.preventDefault()
-        // 在外部浏览器中打开
-        shell.openExternal(url)
-      }
-    })
   }
+
+  // 拦截当前窗口的导航行为
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url.startsWith('https://atomgit.com/') || url.startsWith('https://gitee.com/')) {
+      event.preventDefault()
+      shell.openExternal(url)
+    }
+  })
+
+  // 拦截 window.open 新窗口行为
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://atomgit.com/') || url.startsWith('https://gitee.com/')) {
+      shell.openExternal(url)
+      return { action: 'deny' }
+    }
+    return { action: 'allow' }
+  })
 }
 
 // 窗口控制 IPC 处理

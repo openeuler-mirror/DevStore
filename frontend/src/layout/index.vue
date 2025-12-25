@@ -58,17 +58,16 @@
             mode="horizontal">
           <el-sub-menu index="2">
             <template #title>{{ t('nav.userDoc') }}</template>
-            <el-menu-item index="2-1" @click="openLink('https://gitee.com/openeuler/DevStore/blob/master/README.md')">中文文档</el-menu-item>
-            <el-menu-item index="2-2" @click="openLink('https://gitee.com/openeuler/DevStore/blob/master/README.en.md')">English Doc</el-menu-item>
+            <el-menu-item index="2-1" @click="openLink('https://atomgit.com/src-openeuler/DevStore/blob/master/docs/zh/quick_start.md')">中文文档</el-menu-item>
           </el-sub-menu>
           <el-menu-item index="3">{{ t('nav.devDoc') }}</el-menu-item>
           <el-sub-menu index="4" class="code-repository">
             <template #title>{{ t('nav.codeRepository') }}</template>
-            <el-menu-item index="4-1" @click="openLink('https://gitee.com/openeuler/DevStore')">DevStore</el-menu-item>
-            <el-menu-item index="4-2" @click="openLink('https://gitee.com/openeuler/mcp-servers')">mcp-servers</el-menu-item>
-            <el-menu-item index="4-3" @click="openLink('https://gitee.com/openeuler/oeDeploy')">oeDeploy</el-menu-item>
+            <el-menu-item index="4-1" @click="openLink('https://atomgit.com/openeuler/DevStore')">DevStore</el-menu-item>
+            <el-menu-item index="4-2" @click="openLink('https://atomgit.com/openeuler/mcp-servers')">mcp-servers</el-menu-item>
+            <el-menu-item index="4-3" @click="openLink('https://atomgit.com/openeuler/oeDeploy')">oeDeploy</el-menu-item>
           </el-sub-menu>
-          <el-menu-item index="5">{{ t('nav.feedback') }}</el-menu-item>
+          <el-menu-item index="5" @click="openLink('https://v.wjx.cn/vm/e1ME0nE.aspx#')">{{ t('nav.feedback') }}</el-menu-item>
           <el-menu-item index="6" @click="isLogVisible = true">{{ t('nav.log') }}</el-menu-item>
         </el-menu>
         
@@ -490,28 +489,48 @@ onMounted(async () => {
   }
 }
 
-/* Element UI 下拉菜单通用样式 */
-.el-sub-menu .el-menu,
-.el-sub-menu__drop-down,
-.el-menu--vertical,
-.el-popper .el-menu,
-body .el-popper[data-popper-placement^="bottom"],
-body .el-popper[data-popper-placement^="bottom"] .el-menu {
-  background-color: var(--o-background-color-tertiary-light) !important;
-  border: 2px solid var(--o-background-color-quaternary-light) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+/* Element UI 下拉菜单通用样式 - 移除所有可能的边框 */
+/* popper 容器 */
+.el-popper.is-light {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
 }
 
-.el-sub-menu .el-menu .el-menu-item,
-.el-sub-menu__drop-down .el-menu-item,
-.el-menu--vertical .el-menu-item,
-.el-popper .el-menu .el-menu-item,
-body .el-popper[data-popper-placement^="bottom"] .el-menu-item {
+/* 下拉菜单容器 */
+.el-sub-menu__popup {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  margin-top: 8px !important;
+}
+
+/* 菜单本体 */
+.el-menu--popup,
+.el-menu--popup.el-menu--vertical {
+  background-color: rgba(255, 255, 255, 0.98) !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  padding: 8px !important;
+  min-width: 140px !important;
+}
+
+/* 菜单项 */
+.el-menu--popup .el-menu-item {
   background-color: transparent !important;
+  margin: 2px 0 !important;
+  border-radius: 6px !important;
+  padding: 0 16px !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  transition: all 0.2s ease !important;
+  border: none !important;
   
   &:hover {
-    background-color: var(--o-background-color-quaternary-light) !important;
+    background-color: rgba(64, 158, 255, 0.1) !important;
+    color: var(--o-theme-color-primary-blue) !important;
   }
 }
 
