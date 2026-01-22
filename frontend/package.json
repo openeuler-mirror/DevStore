@@ -6,7 +6,7 @@
     "name": "dingjiahui",
     "email": "dingjiahui4@huawei.com"
   },
-  "homepage": "https://gitee.com/openeuler/DevStore",
+  "homepage": "https://atomgit.com/openeuler/DevStore",
   "private": true,
   "main": "electron/main.js",
   "build": {

@@ -7,7 +7,7 @@ Summary:        Development Store Management System
 
 Group:          Development/Tools
 License:        MulanPSL-2.0
-URL:            https://gitee.com/openeuler/DevStore
+URL:            https://atomgit.com/openeuler/DevStore
 Source0:        %{name}-%{version}.tar.gz
 
 # 依赖包

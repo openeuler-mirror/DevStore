@@ -1,6 +1,6 @@
 [Unit]
 Description=DevStore Development Management System
-Documentation=https://gitee.com/openeuler/DevStore
+Documentation=https://atomgit.com/openeuler/DevStore
 After=network.target
 
 [Service]
